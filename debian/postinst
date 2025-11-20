@@ -1,0 +1,44 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    configure)
+        # Ensure script is executable
+        chmod +x /usr/bin/whisper-voice-input 2>/dev/null || true
+
+        echo ""
+        echo "======================================================================"
+        echo "  Voice Keyboard applet has been installed successfully!"
+        echo "======================================================================"
+        echo ""
+        echo "To enable the applet:"
+        echo "  1. Right-click on your Cinnamon panel"
+        echo "  2. Select 'Applets'"
+        echo "  3. Find 'Keyboard + Voice Input' in the list"
+        echo "  4. Click 'Add to panel'"
+        echo ""
+        echo "To configure voice input:"
+        echo "  - Right-click the applet and select 'Configure'"
+        echo "  - Choose OpenAI API or Local Whisper server"
+        echo "  - Set your API key or server URL"
+        echo ""
+        echo "Note: You may need to restart Cinnamon (Ctrl+Alt+Esc) or log out"
+        echo "      and log back in for the applet to appear in the list."
+        echo ""
+        echo "======================================================================"
+        echo ""
+    ;;
+
+    abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+
+    *)
+        echo "postinst called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

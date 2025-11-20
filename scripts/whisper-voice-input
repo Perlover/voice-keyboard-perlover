@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+"""
+Whisper Voice Input Script
+Records audio and transcribes it using OpenAI Whisper API or local Whisper server
+Then types the recognized text into the active window
+"""
+
+import os
+import sys
+import tempfile
+import subprocess
+import json
+import time
+from pathlib import Path
+
+try:
+    import requests
+except ImportError:
+    print("ERROR: python3-requests is not installed", file=sys.stderr)
+    sys.exit(1)
+
+
+def record_audio(duration=10, output_file="/tmp/voice-input.wav"):
+    """
+    Record audio using ffmpeg (most reliable cross-platform solution)
+    """
+    try:
+        # Use PulseAudio default source
+        cmd = [
+            'ffmpeg',
+            '-f', 'pulse',
+            '-i', 'default',
+            '-t', str(duration),
+            '-acodec', 'pcm_s16le',
+            '-ar', '16000',
+            '-ac', '1',
+            '-y',  # Overwrite output file
+            output_file
+        ]
+
+        print(f"Recording for {duration} seconds...", file=sys.stderr)
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"ERROR: Failed to record audio: {result.stderr}", file=sys.stderr)
+            return False
+
+        # Check if file was created and has content
+        if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+            print("ERROR: No audio recorded", file=sys.stderr)
+            return False
+
+        return True
+
+    except Exception as e:
+        print(f"ERROR: Recording failed: {e}", file=sys.stderr)
+        return False
+
+
+def transcribe_openai(audio_file, api_key, language="auto"):
+    """
+    Transcribe audio using OpenAI Whisper API
+    """
+    if not api_key:
+        print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
+        return None
+
+    try:
+        url = "https://api.openai.com/v1/audio/transcriptions"
+        headers = {
+            "Authorization": f"Bearer {api_key}"
+        }
+
+        with open(audio_file, 'rb') as f:
+            files = {
+                'file': (os.path.basename(audio_file), f, 'audio/wav'),
+                'model': (None, 'whisper-1')
+            }
+
+            if language != "auto":
+                files['language'] = (None, language)
+
+            print("Sending to OpenAI Whisper API...", file=sys.stderr)
+            response = requests.post(url, headers=headers, files=files, timeout=30)
+
+        if response.status_code == 200:
+            result = response.json()
+            return result.get('text', '').strip()
+        else:
+            print(f"ERROR: OpenAI API error: {response.status_code} {response.text}", file=sys.stderr)
+            return None
+
+    except Exception as e:
+        print(f"ERROR: OpenAI transcription failed: {e}", file=sys.stderr)
+        return None
+
+
+def transcribe_local(audio_file, server_url, language="auto"):
+    """
+    Transcribe audio using local Whisper server (e.g., faster-whisper-server)
+    """
+    try:
+        with open(audio_file, 'rb') as f:
+            files = {
+                'audio_file': (os.path.basename(audio_file), f, 'audio/wav')
+            }
+
+            data = {}
+            if language != "auto":
+                data['language'] = language
+
+            print(f"Sending to local Whisper server at {server_url}...", file=sys.stderr)
+            response = requests.post(server_url, files=files, data=data, timeout=30)
+
+        if response.status_code == 200:
+            result = response.json()
+            # Handle different response formats from various Whisper servers
+            if 'text' in result:
+                return result['text'].strip()
+            elif 'transcription' in result:
+                return result['transcription'].strip()
+            elif 'results' in result and len(result['results']) > 0:
+                return result['results'][0].get('transcript', '').strip()
+            else:
+                print(f"ERROR: Unexpected response format: {result}", file=sys.stderr)
+                return None
+        else:
+            print(f"ERROR: Local server error: {response.status_code} {response.text}", file=sys.stderr)
+            return None
+
+    except requests.exceptions.ConnectionError:
+        print(f"ERROR: Cannot connect to local Whisper server at {server_url}", file=sys.stderr)
+        print("Make sure the server is running", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"ERROR: Local transcription failed: {e}", file=sys.stderr)
+        return None
+
+
+def type_text(text):
+    """
+    Type text into the active window using xdotool
+    """
+    if not text:
+        return False
+
+    try:
+        # Small delay to ensure focus is on the target window
+        time.sleep(0.2)
+
+        # Use xdotool to type the text
+        cmd = ['xdotool', 'type', '--clearmodifiers', '--', text]
+        result = subprocess.run(cmd, capture_output=True, text=True)
+
+        if result.returncode != 0:
+            print(f"ERROR: Failed to type text: {result.stderr}", file=sys.stderr)
+            return False
+
+        return True
+
+    except Exception as e:
+        print(f"ERROR: Typing failed: {e}", file=sys.stderr)
+        return False
+
+
+def main():
+    # Get configuration from environment variables
+    whisper_mode = os.environ.get('WHISPER_MODE', 'openai').lower()
+    language = os.environ.get('WHISPER_LANGUAGE', 'auto')
+    recording_duration = int(os.environ.get('RECORDING_DURATION', '10'))
+
+    # Create temporary file for audio
+    temp_audio = tempfile.mktemp(suffix='.wav', prefix='whisper-voice-')
+
+    try:
+        # Step 1: Record audio
+        if not record_audio(recording_duration, temp_audio):
+            sys.exit(1)
+
+        # Step 2: Transcribe
+        text = None
+
+        if whisper_mode == 'openai':
+            api_key = os.environ.get('OPENAI_API_KEY', '')
+            text = transcribe_openai(temp_audio, api_key, language)
+
+        elif whisper_mode == 'local':
+            server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
+            text = transcribe_local(temp_audio, server_url, language)
+
+        else:
+            print(f"ERROR: Unknown WHISPER_MODE: {whisper_mode}", file=sys.stderr)
+            sys.exit(1)
+
+        if not text:
+            print("No text recognized", file=sys.stderr)
+            sys.exit(1)
+
+        # Step 3: Type the text
+        print(f"Recognized: {text}", file=sys.stderr)
+
+        if type_text(text):
+            # Output the recognized text to stdout (for the applet notification)
+            print(text)
+            sys.exit(0)
+        else:
+            sys.exit(1)
+
+    finally:
+        # Cleanup temporary file
+        if os.path.exists(temp_audio):
+            try:
+                os.remove(temp_audio)
+            except:
+                pass
+
+
+if __name__ == '__main__':
+    main()

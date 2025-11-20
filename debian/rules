@@ -1,0 +1,22 @@
+#!/usr/bin/make -f
+
+%:
+	dh $@
+
+override_dh_auto_install:
+	# Install applet
+	install -d $(CURDIR)/debian/voice-keyboard-perlover/usr/share/cinnamon/applets/voice-keyboard@perlover
+	cp -r applet/voice-keyboard@perlover/* $(CURDIR)/debian/voice-keyboard-perlover/usr/share/cinnamon/applets/voice-keyboard@perlover/
+
+	# Install script
+	install -d $(CURDIR)/debian/voice-keyboard-perlover/usr/bin
+	install -m 0755 scripts/whisper-voice-input $(CURDIR)/debian/voice-keyboard-perlover/usr/bin/whisper-voice-input
+
+override_dh_auto_build:
+	# Nothing to build
+
+override_dh_auto_clean:
+	# Nothing to clean
+
+override_dh_auto_test:
+	# No tests

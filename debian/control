@@ -1,0 +1,36 @@
+Source: voice-keyboard-perlover
+Section: gnome
+Priority: optional
+Maintainer: perlover <perlover@perlover.com>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.2
+Homepage: https://github.com/perlover/voice-keyboard-perlover
+Vcs-Browser: https://github.com/perlover/voice-keyboard-perlover
+Vcs-Git: https://github.com/perlover/voice-keyboard-perlover.git
+
+Package: voice-keyboard-perlover
+Architecture: all
+Depends: ${misc:Depends},
+         cinnamon (>= 5.8),
+         python3,
+         python3-requests,
+         xdotool,
+         ffmpeg,
+         pulseaudio | pipewire-pulse
+Recommends: gir1.2-gkbd-3.0,
+            gir1.2-gnomedesktop-3.0
+Description: Cinnamon applet with voice input via Whisper
+ This package provides a Cinnamon panel applet that combines keyboard
+ layout switching functionality with voice input capabilities powered
+ by OpenAI Whisper or local Whisper servers.
+ .
+ Features:
+  - Keyboard layout indicator and switcher
+  - Microphone button for voice input
+  - Support for OpenAI Whisper API
+  - Support for local Whisper servers
+  - Automatic text insertion via xdotool
+  - Configurable recording duration and language
+ .
+ The applet displays the current keyboard layout and provides quick
+ access to voice transcription that types directly into the active window.

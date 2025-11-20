@@ -1,0 +1,20 @@
+.voice-keyboard-applet {
+    padding: 0 4px;
+}
+
+.voice-keyboard-applet:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+}
+
+.voice-keyboard-mic-icon {
+    padding-left: 4px;
+}
+
+.voice-keyboard-mic-icon:hover {
+    color: #4a90d9;
+}
+
+.voice-keyboard-label {
+    font-weight: bold;
+    padding-right: 2px;
+}

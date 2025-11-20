@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <g>
+    <!-- Microphone body -->
+    <rect x="20" y="10" width="8" height="16" rx="4" fill="#4a90d9"/>
+
+    <!-- Microphone stand -->
+    <path d="M 24 26 L 24 34 M 18 34 L 30 34" stroke="#4a90d9" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+    <!-- Sound waves -->
+    <path d="M 14 18 Q 12 20 14 22" stroke="#4a90d9" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+    <path d="M 34 18 Q 36 20 34 22" stroke="#4a90d9" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+
+    <!-- Keyboard key hint -->
+    <rect x="32" y="28" width="6" height="6" rx="1" fill="#666" opacity="0.6"/>
+    <text x="35" y="33" font-size="4" fill="white" text-anchor="middle">A</text>
+  </g>
+</svg>

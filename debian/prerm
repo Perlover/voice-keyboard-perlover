@@ -1,0 +1,23 @@
+#!/bin/bash
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        echo "Removing voice-keyboard-perlover..."
+        echo "Note: User settings in ~/.cinnamon/configs/voice-keyboard@perlover"
+        echo "      will be preserved. Delete them manually if needed."
+    ;;
+
+    failed-upgrade)
+    ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

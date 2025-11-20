@@ -1,0 +1,58 @@
+{
+    "whisper-mode": {
+        "type": "combobox",
+        "default": "openai",
+        "description": "Whisper mode",
+        "options": {
+            "OpenAI API": "openai",
+            "Local Server": "local"
+        },
+        "tooltip": "Choose between OpenAI API or local Whisper server"
+    },
+    "openai-api-key": {
+        "type": "entry",
+        "default": "",
+        "description": "OpenAI API Key",
+        "tooltip": "Your OpenAI API key for Whisper (required if using OpenAI mode)",
+        "dependency": "whisper-mode=openai"
+    },
+    "local-url": {
+        "type": "entry",
+        "default": "http://localhost:9000/asr",
+        "description": "Local Whisper Server URL",
+        "tooltip": "URL of your local Whisper server (e.g., faster-whisper-server)",
+        "dependency": "whisper-mode=local"
+    },
+    "language": {
+        "type": "combobox",
+        "default": "auto",
+        "description": "Recognition language",
+        "options": {
+            "Auto-detect": "auto",
+            "Russian": "ru",
+            "English": "en",
+            "Spanish": "es",
+            "German": "de",
+            "French": "fr",
+            "Chinese": "zh",
+            "Japanese": "ja"
+        },
+        "tooltip": "Language for speech recognition"
+    },
+    "recording-duration": {
+        "type": "spinbutton",
+        "default": 10,
+        "min": 3,
+        "max": 60,
+        "step": 1,
+        "units": "seconds",
+        "description": "Recording duration",
+        "tooltip": "How long to record audio (in seconds)"
+    },
+    "script-path": {
+        "type": "entry",
+        "default": "/usr/bin/whisper-voice-input",
+        "description": "Path to whisper-voice-input script",
+        "tooltip": "Full path to the voice input script"
+    }
+}
