@@ -41,13 +41,13 @@
     },
     "recording-duration": {
         "type": "spinbutton",
-        "default": 10,
-        "min": 3,
-        "max": 60,
-        "step": 1,
+        "default": 300,
+        "min": 10,
+        "max": 600,
+        "step": 10,
         "units": "seconds",
-        "description": "Recording duration",
-        "tooltip": "How long to record audio (in seconds)"
+        "description": "Maximum Recording Duration",
+        "tooltip": "Safety limit for maximum recording duration. Recording will automatically stop and transcribe when this limit is reached. Default: 5 minutes (300 seconds)."
     },
     "script-path": {
         "type": "entry",

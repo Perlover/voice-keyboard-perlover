@@ -7,6 +7,22 @@ const Lang = imports.lang;
 const Main = imports.ui.main;
 const Settings = imports.ui.settings;
 const Util = imports.misc.util;
+const Clutter = imports.gi.Clutter;
+const ModalDialog = imports.ui.modalDialog;
+
+// State constants
+const STATE_IDLE = 'STATE_IDLE';
+const STATE_RECORDING = 'STATE_RECORDING';
+const STATE_PROCESSING = 'STATE_PROCESSING';
+const STATE_ERROR = 'STATE_ERROR';
+
+// Exit codes from Python script
+const EXIT_SUCCESS = 0;
+const EXIT_CONFIG_ERROR = 1;
+const EXIT_RECORDING_ERROR = 2;
+const EXIT_TRANSCRIPTION_ERROR = 3;
+const EXIT_CANCELLED = 4;
+const EXIT_TIMEOUT = 5;
 
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
@@ -21,6 +37,15 @@ VoiceKeyboardApplet.prototype = {
         this.metadata = metadata;
         this.settings = new Settings.AppletSettings(this, metadata.uuid, instance_id);
 
+        // Initialize state machine
+        this.currentState = STATE_IDLE;
+        this.recordingAnimation = null;
+        this.processingAnimation = null;
+        this.loadingDots = [];
+        this.errorMessage = null;
+        this.recordingProcess = null;
+        this.errorOverlay = null;
+
         // Bind settings
         this.settings.bind("whisper-mode", "whisperMode");
         this.settings.bind("openai-api-key", "openaiApiKey");
@@ -30,27 +55,18 @@ VoiceKeyboardApplet.prototype = {
         this.settings.bind("script-path", "scriptPath");
 
         // Set icon
-        this.set_applet_icon_symbolic_name("audio-input-microphone");
-        this.set_applet_tooltip(_("Voice Keyboard - Click to start voice input"));
+        this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
+
+        // Task 2.5: Update tooltip to reflect new click behavior
+        this.set_applet_tooltip(_("Voice Keyboard - Left-click to start/stop recording, Right-click for settings"));
 
         // Create menu
         this.menuManager = new PopupMenu.PopupMenuManager(this);
         this.menu = new Applet.AppletPopupMenu(this, orientation);
         this.menuManager.addMenu(this.menu);
 
-        // Add voice input menu item
-        let voiceItem = new PopupMenu.PopupIconMenuItem(
-            _("Start Voice Input"),
-            "audio-input-microphone-symbolic",
-            St.IconType.SYMBOLIC
-        );
-        voiceItem.connect('activate', Lang.bind(this, this._startVoiceInput));
-        this.menu.addMenuItem(voiceItem);
-
-        // Add separator
-        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        // Add settings menu item
+        // Task 2.5: Remove "Start Voice Input" menu item and separator
+        // Only keep Settings menu item
         let settingsItem = new PopupMenu.PopupIconMenuItem(
             _("Settings"),
             "preferences-system-symbolic",
@@ -62,15 +78,367 @@ VoiceKeyboardApplet.prototype = {
         this.menu.addMenuItem(settingsItem);
     },
 
-    _startVoiceInput: function() {
-        // Close menu
-        this.menu.close();
+    /**
+     * Validate configuration before starting recording
+     * Task 1.4: Configuration validation function
+     */
+    validateConfiguration: function() {
+        if (this.whisperMode === 'openai') {
+            return this.openaiApiKey && this.openaiApiKey.trim() !== '';
+        } else if (this.whisperMode === 'local') {
+            return this.localUrl && this.localUrl.trim() !== '';
+        }
+        return false;
+    },
 
-        // Show notification
-        Main.notify(
-            "Voice Input",
-            "Recording started, please speak..."
+    /**
+     * Task 3.2: Implement setIdleIcon() function
+     * Set IDLE state icon and clear any animations/errors
+     */
+    setIdleIcon: function() {
+        this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
+        this.actor.opacity = 255;
+        this.errorMessage = null;
+
+        // Task 4.7: Remove error overlay when leaving ERROR state
+        if (this.errorOverlay) {
+            this.actor.remove_actor(this.errorOverlay);
+            this.errorOverlay.destroy();
+            this.errorOverlay = null;
+        }
+    },
+
+    /**
+     * Task 3.3: Implement startRecordingAnimation() function
+     * Start smooth fade animation for RECORDING state
+     */
+    startRecordingAnimation: function() {
+        // Start fade out animation
+        this._fadeOut();
+    },
+
+    /**
+     * Fade out animation (100% to 30% opacity over 1 second)
+     */
+    _fadeOut: function() {
+        if (this.currentState !== STATE_RECORDING) {
+            return; // Stop animation if state changed
+        }
+
+        this.recordingAnimation = this.actor.ease({
+            opacity: 77, // 30% of 255
+            duration: 1000, // 1 second
+            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+            onComplete: Lang.bind(this, this._fadeIn)
+        });
+    },
+
+    /**
+     * Fade in animation (30% to 100% opacity over 1 second)
+     */
+    _fadeIn: function() {
+        if (this.currentState !== STATE_RECORDING) {
+            return; // Stop animation if state changed
+        }
+
+        this.recordingAnimation = this.actor.ease({
+            opacity: 255, // 100%
+            duration: 1000, // 1 second
+            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+            onComplete: Lang.bind(this, this._fadeOut)
+        });
+    },
+
+    /**
+     * Task 3.4: Stop recording animation and clean up
+     */
+    stopRecordingAnimation: function() {
+        if (this.recordingAnimation) {
+            // Remove the animation
+            this.actor.remove_transition('opacity');
+            this.recordingAnimation = null;
+            // Reset opacity to full
+            this.actor.opacity = 255;
+        }
+    },
+
+    /**
+     * Task 4.2: Create 8-dot circular loading indicator component
+     * Task 4.3: Implement startProcessingAnimation() function
+     */
+    startProcessingAnimation: function() {
+        // Clean up existing dots if any
+        this._cleanupLoadingDots();
+
+        // Create container for loading dots
+        let iconSize = 24; // Standard panel icon size
+        let dotRadius = iconSize * 0.6; // Radius of circle containing dots
+        let dotSize = 3; // Size of each dot
+
+        // Create 8 dots in a circle
+        this.loadingDots = [];
+        for (let i = 0; i < 8; i++) {
+            let angle = (i * Math.PI / 4) - Math.PI / 2; // Start from top, go clockwise
+            let dot = new St.Widget({
+                style: 'background-color: rgba(255, 255, 255, 0.3); border-radius: 50%;',
+                width: dotSize,
+                height: dotSize,
+                x: iconSize / 2 + dotRadius * Math.cos(angle) - dotSize / 2,
+                y: iconSize / 2 + dotRadius * Math.sin(angle) - dotSize / 2
+            });
+
+            this.actor.add_actor(dot);
+            this.loadingDots.push(dot);
+        }
+
+        // Start animation - rotate bright dot counterclockwise
+        this.processingAnimation = {
+            currentDot: 0,
+            timeoutId: null
+        };
+
+        this._rotateDot();
+    },
+
+    /**
+     * Rotate the bright dot counterclockwise through positions
+     */
+    _rotateDot: function() {
+        if (this.currentState !== STATE_PROCESSING || !this.processingAnimation) {
+            return;
+        }
+
+        // Update dot brightness
+        for (let i = 0; i < this.loadingDots.length; i++) {
+            if (i === this.processingAnimation.currentDot) {
+                // Bright dot
+                this.loadingDots[i].set_style('background-color: rgba(255, 255, 255, 1.0); border-radius: 50%;');
+            } else {
+                // Dim dot
+                this.loadingDots[i].set_style('background-color: rgba(255, 255, 255, 0.3); border-radius: 50%;');
+            }
+        }
+
+        // Move to next dot (counterclockwise = decrement)
+        this.processingAnimation.currentDot = (this.processingAnimation.currentDot + 7) % 8;
+
+        // Schedule next rotation (2000ms / 8 dots = 250ms per dot)
+        this.processingAnimation.timeoutId = GLib.timeout_add(
+            GLib.PRIORITY_DEFAULT,
+            250,
+            Lang.bind(this, this._rotateDot)
         );
+    },
+
+    /**
+     * Task 4.7: Clean up loading dots animation
+     */
+    _cleanupLoadingDots: function() {
+        if (this.loadingDots && this.loadingDots.length > 0) {
+            for (let i = 0; i < this.loadingDots.length; i++) {
+                if (this.loadingDots[i]) {
+                    this.actor.remove_actor(this.loadingDots[i]);
+                    this.loadingDots[i].destroy();
+                }
+            }
+            this.loadingDots = [];
+        }
+
+        if (this.processingAnimation && this.processingAnimation.timeoutId) {
+            GLib.source_remove(this.processingAnimation.timeoutId);
+            this.processingAnimation.timeoutId = null;
+        }
+    },
+
+    /**
+     * Task 4.4: Implement showErrorIcon() function
+     * Keep normal microphone icon, add red warning triangle overlay
+     */
+    showErrorIcon: function() {
+        // Keep normal microphone icon
+        this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
+        this.actor.opacity = 255;
+
+        // Create warning triangle overlay
+        this.errorOverlay = new St.Icon({
+            icon_name: 'dialog-warning-symbolic',
+            icon_type: St.IconType.SYMBOLIC,
+            style: 'color: #ff0000; font-size: 12px;',
+            x_align: Clutter.ActorAlign.END,
+            y_align: Clutter.ActorAlign.END
+        });
+
+        this.actor.add_actor(this.errorOverlay);
+    },
+
+    /**
+     * Task 4.5: Implement showErrorDialog() function
+     * Show modal dialog with error details
+     */
+    showErrorDialog: function() {
+        let dialog = new ModalDialog.ModalDialog();
+
+        let contentBox = new St.BoxLayout({
+            vertical: true,
+            style_class: 'modal-dialog-content-box'
+        });
+
+        // Add error title
+        let titleLabel = new St.Label({
+            text: _("Voice Input Error"),
+            style: 'font-weight: bold; font-size: 14px; margin-bottom: 10px;'
+        });
+        contentBox.add(titleLabel);
+
+        // Add error message
+        let messageLabel = new St.Label({
+            text: this.errorMessage || _("An unknown error occurred"),
+            style: 'margin-bottom: 10px;'
+        });
+        contentBox.add(messageLabel);
+
+        dialog.contentLayout.add(contentBox);
+
+        // Add close button
+        dialog.setButtons([
+            {
+                label: _("Close"),
+                action: Lang.bind(this, function() {
+                    dialog.close();
+                })
+            }
+        ]);
+
+        // Connect close event to return to IDLE state
+        dialog.connect('closed', Lang.bind(this, function() {
+            this.setState(STATE_IDLE);
+        }));
+
+        dialog.open();
+    },
+
+    /**
+     * Task 4.6: Implement cancelTranscription() function
+     * Kill Python process and transition to IDLE state silently
+     */
+    cancelTranscription: function() {
+        // Kill the Python process if it's still running
+        if (this.recordingProcess && this.recordingProcess.pid) {
+            try {
+                // Send SIGTERM to the process
+                GLib.spawn_command_line_sync('kill ' + this.recordingProcess.pid);
+                this.recordingProcess = null;
+            } catch (e) {
+                global.logError("Error cancelling transcription: " + e);
+            }
+        }
+
+        // Return to IDLE state silently (no notification)
+        this.setState(STATE_IDLE);
+    },
+
+    /**
+     * Set the current state and handle transitions
+     * Task 1.3: Implement setState() function
+     * Task 3.4: Enhanced with animation cleanup
+     * Task 4.7: Enhanced with processing animation and error overlay cleanup
+     */
+    setState: function(newState) {
+        // Task 3.4: Clean up recording animation before state change
+        if (this.recordingAnimation) {
+            this.stopRecordingAnimation();
+        }
+
+        // Task 4.7: Clean up processing animation before state change
+        if (this.processingAnimation) {
+            this._cleanupLoadingDots();
+            this.processingAnimation = null;
+        }
+
+        // Cancel any running processes if transitioning away from RECORDING or PROCESSING
+        if (this.currentState === STATE_RECORDING && newState !== STATE_RECORDING) {
+            // Will be implemented in Task Group 3
+        }
+
+        if (this.currentState === STATE_PROCESSING && newState !== STATE_PROCESSING) {
+            // Already handled by cancelTranscription
+        }
+
+        // Update state
+        this.currentState = newState;
+
+        // Initialize new state
+        switch (newState) {
+            case STATE_IDLE:
+                this.setIdleIcon();
+                break;
+            case STATE_RECORDING:
+                this.startRecordingAnimation();
+                break;
+            case STATE_PROCESSING:
+                this.startProcessingAnimation();
+                break;
+            case STATE_ERROR:
+                this.showErrorIcon();
+                break;
+        }
+    },
+
+    /**
+     * Task 2.2: Implement handleLeftClick() function
+     * Handle left-click behavior based on current state
+     */
+    handleLeftClick: function() {
+        switch (this.currentState) {
+            case STATE_IDLE:
+                // Validate configuration
+                if (!this.validateConfiguration()) {
+                    // Open settings dialog and show notification
+                    Main.notify(
+                        "Voice Keyboard Perlover",
+                        "Settings are not configured"
+                    );
+                    Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+                    return;
+                }
+                // Start recording
+                this.startRecording();
+                break;
+
+            case STATE_RECORDING:
+                // Stop recording and transition to processing
+                this.stopRecording();
+                break;
+
+            case STATE_PROCESSING:
+                // Cancel transcription and return to idle
+                this.cancelTranscription();
+                break;
+
+            case STATE_ERROR:
+                // Show error dialog
+                this.showErrorDialog();
+                break;
+        }
+    },
+
+    /**
+     * Task 3.5: Implement startRecording() function
+     * Start recording with proper configuration validation and process management
+     */
+    startRecording: function() {
+        // Validate configuration first
+        if (!this.validateConfiguration()) {
+            Main.notify(
+                "Voice Keyboard Perlover",
+                "Settings are not configured"
+            );
+            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+            return;
+        }
+
+        // Transition to RECORDING state
+        this.setState(STATE_RECORDING);
 
         // Prepare environment variables
         let envp = GLib.get_environ();
@@ -95,29 +463,129 @@ VoiceKeyboardApplet.prototype = {
             );
 
             if (success) {
-                // Watch for process completion
+                // Store process reference
+                this.recordingProcess = { pid: pid, stdout: stdout, stderr: stderr };
+
+                // Task 5.7: Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
                     GLib.spawn_close_pid(pid);
+                    this.recordingProcess = null;
 
-                    // Read output
+                    // Get exit code from status
+                    let exitCode = 0;
+                    if (status !== null) {
+                        // Extract exit code (status contains signal and exit code)
+                        exitCode = (status >> 8) & 0xFF;
+                    }
+
+                    // Read output from stdout
                     let outReader = new Gio.DataInputStream({
                         base_stream: new Gio.UnixInputStream({ fd: stdout, close_fd: true })
                     });
 
-                    let [line, length] = outReader.read_line(null);
-                    if (line !== null) {
-                        let text = line.toString().trim();
-                        if (text.length > 0) {
+                    // Read all lines from stdout
+                    let outputLines = [];
+                    let line, length;
+                    try {
+                        while ((([line, length] = outReader.read_line(null)) && line !== null)) {
+                            outputLines.push(line.toString().trim());
+                        }
+                    } catch (e) {
+                        global.logError("Error reading script output: " + e);
+                    }
+
+                    // Read error output for detailed error messages
+                    let errReader = new Gio.DataInputStream({
+                        base_stream: new Gio.UnixInputStream({ fd: stderr, close_fd: true })
+                    });
+
+                    let errorLines = [];
+                    try {
+                        while ((([line, length] = errReader.read_line(null)) && line !== null)) {
+                            errorLines.push(line.toString().trim());
+                        }
+                    } catch (e) {
+                        global.logError("Error reading script stderr: " + e);
+                    }
+
+                    // Task 5.7: Handle different exit codes
+                    if (exitCode === EXIT_SUCCESS) {
+                        // Success - check if window changed
+                        if (outputLines.length > 0 && outputLines[0] === "WINDOW_CHANGED") {
+                            // Window changed - show notification with recognized text
+                            let recognizedText = outputLines.length > 1 ? outputLines[1] : "Text copied to clipboard";
                             Main.notify(
-                                "Voice Input",
-                                "Recognized: " + text
-                            );
-                        } else {
-                            Main.notify(
-                                "Voice Input",
-                                "No speech detected"
+                                "Voice Keyboard Perlover",
+                                "Window changed - text copied to clipboard:\n" + recognizedText
                             );
                         }
+                        // Silently return to IDLE on success (no notification if text was typed)
+                        this.setState(STATE_IDLE);
+
+                    } else if (exitCode === EXIT_TIMEOUT) {
+                        // Maximum duration reached
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            "Maximum recording time reached"
+                        );
+
+                        // Check if window changed
+                        if (outputLines.length > 0 && outputLines[0] === "WINDOW_CHANGED") {
+                            let recognizedText = outputLines.length > 1 ? outputLines[1] : "";
+                            if (recognizedText) {
+                                Main.notify(
+                                    "Voice Keyboard Perlover",
+                                    "Window changed - text copied to clipboard:\n" + recognizedText
+                                );
+                            }
+                        }
+
+                        this.setState(STATE_IDLE);
+
+                    } else if (exitCode === EXIT_TRANSCRIPTION_ERROR) {
+                        // Transcription error - transition to ERROR state
+                        let errorMsg = errorLines.length > 0 ? errorLines.join("\n") : "Transcription failed";
+                        this.errorMessage = errorMsg;
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            "Transcription failed"
+                        );
+                        this.setState(STATE_ERROR);
+
+                    } else if (exitCode === EXIT_RECORDING_ERROR) {
+                        // Recording error
+                        let errorMsg = errorLines.length > 0 ? errorLines.join("\n") : "Recording failed";
+                        this.errorMessage = errorMsg;
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            "Recording failed"
+                        );
+                        this.setState(STATE_ERROR);
+
+                    } else if (exitCode === EXIT_CONFIG_ERROR) {
+                        // Configuration error
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            "Configuration error - please check settings"
+                        );
+                        this.setState(STATE_IDLE);
+
+                    } else if (exitCode === EXIT_CANCELLED) {
+                        // Cancelled by user - silently return to IDLE
+                        this.setState(STATE_IDLE);
+
+                    } else {
+                        // Unknown exit code
+                        let errorMsg = "Process exited with code " + exitCode;
+                        if (errorLines.length > 0) {
+                            errorMsg += "\n" + errorLines.join("\n");
+                        }
+                        this.errorMessage = errorMsg;
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            "Voice input failed"
+                        );
+                        this.setState(STATE_ERROR);
                     }
                 }));
             }
@@ -127,14 +595,65 @@ VoiceKeyboardApplet.prototype = {
                 "Failed to start voice input: " + e.message
             );
             global.logError("Voice input error: " + e);
+            this.errorMessage = "Failed to start voice input: " + e.message;
+            this.setState(STATE_ERROR);
         }
     },
 
+    /**
+     * Task 3.6: Implement stopRecording() function
+     * Stop recording and transition to processing state
+     */
+    stopRecording: function() {
+        // Transition to PROCESSING state
+        this.setState(STATE_PROCESSING);
+
+        // Kill ffmpeg process if still running
+        // The Python script will handle ffmpeg termination and continue with transcription
+        // We send SIGTERM to stop recording but keep the script running
+        if (this.recordingProcess && this.recordingProcess.pid) {
+            try {
+                // Send SIGTERM to the process to stop recording
+                // The Python script should handle this gracefully and proceed to transcription
+                GLib.spawn_command_line_sync('kill -TERM ' + this.recordingProcess.pid);
+            } catch (e) {
+                global.logError("Error stopping recording: " + e);
+            }
+        }
+
+        // The recording process continues running for transcription
+        // Process will be monitored via child_watch_add callback
+    },
+
+    /**
+     * Task 2.3: Override on_applet_clicked() for left-click
+     * Replace menu toggle with call to handleLeftClick()
+     */
     on_applet_clicked: function(event) {
-        this.menu.toggle();
+        this.handleLeftClick();
+    },
+
+    /**
+     * Task 2.4: Implement _onButtonPressEvent() for right-click detection
+     * Show settings menu on right-click only
+     */
+    _onButtonPressEvent: function(actor, event) {
+        // Check if right mouse button (button 3)
+        if (event.get_button() === 3) {
+            this.menu.toggle();
+            return true; // Prevent event propagation
+        }
+        return false;
     },
 
     on_applet_removed_from_panel: function() {
+        // Clean up animations
+        if (this.recordingAnimation) {
+            this.stopRecordingAnimation();
+        }
+        if (this.processingAnimation) {
+            this._cleanupLoadingDots();
+        }
         this.settings.finalize();
     }
 };

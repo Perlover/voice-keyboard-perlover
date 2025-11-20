@@ -10,7 +10,7 @@ import sys
 import tempfile
 import subprocess
 import json
-import time
+import signal
 from pathlib import Path
 
 try:
@@ -20,17 +20,38 @@ except ImportError:
     sys.exit(1)
 
 
-def record_audio(duration=10, output_file="/tmp/voice-input.wav"):
+# Exit codes
+EXIT_SUCCESS = 0
+EXIT_CONFIG_ERROR = 1
+EXIT_RECORDING_ERROR = 2
+EXIT_TRANSCRIPTION_ERROR = 3
+EXIT_CANCELLED = 4
+EXIT_TIMEOUT = 5
+
+
+def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.wav"):
     """
-    Record audio using ffmpeg (most reliable cross-platform solution)
+    Record audio using ffmpeg until SIGTERM is received or max duration reached.
+    Returns tuple: (success: bool, reached_max: bool)
     """
+    ffmpeg_process = None
+
+    def signal_handler(signum, frame):
+        # User stopped recording - kill ffmpeg and continue
+        if ffmpeg_process:
+            ffmpeg_process.terminate()
+        raise InterruptedError("Recording stopped by user")
+
+    # Set up signal handler for SIGTERM
+    signal.signal(signal.SIGTERM, signal_handler)
+
     try:
-        # Use PulseAudio default source
+        # Use PulseAudio default source with maximum duration
         cmd = [
             'ffmpeg',
             '-f', 'pulse',
             '-i', 'default',
-            '-t', str(duration),
+            '-t', str(max_duration),
             '-acodec', 'pcm_s16le',
             '-ar', '16000',
             '-ac', '1',
@@ -38,23 +59,55 @@ def record_audio(duration=10, output_file="/tmp/voice-input.wav"):
             output_file
         ]
 
-        print(f"Recording for {duration} seconds...", file=sys.stderr)
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        print(f"Recording (max {max_duration} seconds)...", file=sys.stderr)
+        ffmpeg_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
 
-        if result.returncode != 0:
-            print(f"ERROR: Failed to record audio: {result.stderr}", file=sys.stderr)
-            return False
+        # Wait for ffmpeg to complete or be terminated
+        returncode = ffmpeg_process.wait()
+
+        # Check if ffmpeg completed naturally (reached max duration)
+        if returncode == 0:
+            # Check file size to determine if we actually recorded something
+            if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+                print(f"Recording reached maximum duration ({max_duration}s)", file=sys.stderr)
+                return (True, True)  # Success, reached max
+            else:
+                print("ERROR: No audio recorded", file=sys.stderr)
+                return (False, False)
+        else:
+            print(f"ERROR: ffmpeg failed with code {returncode}", file=sys.stderr)
+            return (False, False)
+
+    except InterruptedError:
+        # User stopped recording via SIGTERM - this is normal
+        # Wait for ffmpeg to finish writing
+        if ffmpeg_process:
+            try:
+                ffmpeg_process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                ffmpeg_process.kill()
 
         # Check if file was created and has content
-        if not os.path.exists(output_file) or os.path.getsize(output_file) == 0:
+        if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+            print("Recording stopped by user", file=sys.stderr)
+            return (True, False)  # Success, user stopped
+        else:
             print("ERROR: No audio recorded", file=sys.stderr)
-            return False
-
-        return True
+            return (False, False)
 
     except Exception as e:
         print(f"ERROR: Recording failed: {e}", file=sys.stderr)
-        return False
+        if ffmpeg_process:
+            try:
+                ffmpeg_process.kill()
+            except:
+                pass
+        return (False, False)
 
 
 def transcribe_openai(audio_file, api_key, language="auto"):
@@ -137,20 +190,74 @@ def transcribe_local(audio_file, server_url, language="auto"):
         return None
 
 
+def get_active_window():
+    """
+    Get the active window ID using xdotool
+    Returns window ID as string, or None on error
+    """
+    try:
+        result = subprocess.run(
+            ['xdotool', 'getactivewindow'],
+            capture_output=True,
+            text=True,
+            timeout=2
+        )
+
+        if result.returncode == 0:
+            return result.stdout.strip()
+        else:
+            print(f"ERROR: Failed to get active window: {result.stderr}", file=sys.stderr)
+            return None
+
+    except Exception as e:
+        print(f"ERROR: Window tracking failed: {e}", file=sys.stderr)
+        return None
+
+
+def copy_to_clipboard(text):
+    """
+    Copy text to clipboard using xclip
+    Returns True on success, False on failure
+    """
+    try:
+        result = subprocess.run(
+            ['xclip', '-selection', 'clipboard'],
+            input=text.encode(),
+            capture_output=True,
+            timeout=5
+        )
+
+        if result.returncode == 0:
+            return True
+        else:
+            print(f"ERROR: Failed to copy to clipboard: {result.stderr}", file=sys.stderr)
+            return False
+
+    except FileNotFoundError:
+        print("ERROR: xclip is not installed", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"ERROR: Clipboard copy failed: {e}", file=sys.stderr)
+        return False
+
+
 def type_text(text):
     """
-    Type text into the active window using xdotool
+    Type text into the active window using xdotool - instant insertion
+    Task 5.2: Remove character-by-character typing delays
     """
     if not text:
         return False
 
     try:
-        # Small delay to ensure focus is on the target window
-        time.sleep(0.2)
-
-        # Use xdotool to type the text
-        cmd = ['xdotool', 'type', '--clearmodifiers', '--', text]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        # Task 5.2: Use single xdotool command for instant text insertion
+        # Remove all delays - text should appear instantly
+        result = subprocess.run(
+            ['xdotool', 'type', '--', text],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
 
         if result.returncode != 0:
             print(f"ERROR: Failed to type text: {result.stderr}", file=sys.stderr)
@@ -167,15 +274,42 @@ def main():
     # Get configuration from environment variables
     whisper_mode = os.environ.get('WHISPER_MODE', 'openai').lower()
     language = os.environ.get('WHISPER_LANGUAGE', 'auto')
-    recording_duration = int(os.environ.get('RECORDING_DURATION', '10'))
+    max_duration = int(os.environ.get('RECORDING_DURATION', '300'))
+
+    # Validate configuration
+    if whisper_mode == 'openai':
+        api_key = os.environ.get('OPENAI_API_KEY', '')
+        if not api_key:
+            print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
+            sys.exit(EXIT_CONFIG_ERROR)
+    elif whisper_mode == 'local':
+        server_url = os.environ.get('WHISPER_LOCAL_URL', '')
+        if not server_url:
+            print("ERROR: WHISPER_LOCAL_URL is not set", file=sys.stderr)
+            sys.exit(EXIT_CONFIG_ERROR)
+    else:
+        print(f"ERROR: Unknown WHISPER_MODE: {whisper_mode}", file=sys.stderr)
+        sys.exit(EXIT_CONFIG_ERROR)
+
+    # Task 5.3: Capture initial active window ID
+    initial_window_id = get_active_window()
+    if not initial_window_id:
+        print("WARNING: Could not get initial window ID, window tracking disabled", file=sys.stderr)
 
     # Create temporary file for audio
     temp_audio = tempfile.mktemp(suffix='.wav', prefix='whisper-voice-')
 
     try:
-        # Step 1: Record audio
-        if not record_audio(recording_duration, temp_audio):
-            sys.exit(1)
+        # Task 5.5: Record audio with user control and maximum duration
+        success, reached_max = record_audio_user_controlled(max_duration, temp_audio)
+
+        if not success:
+            sys.exit(EXIT_RECORDING_ERROR)
+
+        # Task 5.6: Exit with code 5 if maximum duration reached
+        if reached_max:
+            # Still transcribe the audio, but will notify applet
+            print("Maximum recording duration reached", file=sys.stderr)
 
         # Step 2: Transcribe
         text = None
@@ -188,23 +322,44 @@ def main():
             server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
             text = transcribe_local(temp_audio, server_url, language)
 
-        else:
-            print(f"ERROR: Unknown WHISPER_MODE: {whisper_mode}", file=sys.stderr)
-            sys.exit(1)
-
         if not text:
             print("No text recognized", file=sys.stderr)
-            sys.exit(1)
+            sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
-        # Step 3: Type the text
+        # Step 3: Check if active window changed
         print(f"Recognized: {text}", file=sys.stderr)
 
+        # Task 5.3 & 5.4: Check for window change
+        if initial_window_id:
+            current_window_id = get_active_window()
+
+            if current_window_id and current_window_id != initial_window_id:
+                # Window changed - copy to clipboard and notify
+                print("WINDOW_CHANGED", file=sys.stdout)
+                print(text, file=sys.stdout)
+
+                if copy_to_clipboard(text):
+                    print("Text copied to clipboard", file=sys.stderr)
+                else:
+                    print("WARNING: Failed to copy to clipboard", file=sys.stderr)
+
+                # Exit with success but different behavior
+                if reached_max:
+                    sys.exit(EXIT_TIMEOUT)
+                else:
+                    sys.exit(EXIT_SUCCESS)
+
+        # Window didn't change - type text normally
         if type_text(text):
-            # Output the recognized text to stdout (for the applet notification)
-            print(text)
-            sys.exit(0)
+            # Output the recognized text to stdout (for the applet)
+            print(text, file=sys.stdout)
+
+            if reached_max:
+                sys.exit(EXIT_TIMEOUT)
+            else:
+                sys.exit(EXIT_SUCCESS)
         else:
-            sys.exit(1)
+            sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
     finally:
         # Cleanup temporary file
