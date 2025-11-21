@@ -197,8 +197,8 @@ VoiceKeyboardApplet.prototype = {
         // Clean up existing animation if any
         this._cleanupLoadingDots();
 
-        // Task 2.2: Change icon to cloud-upload
-        this.set_applet_icon_symbolic_name("cloud-upload");
+        // Task 2.2: Change icon to send-to-symbolic (upload arrow)
+        this.set_applet_icon_symbolic_name("send-to-symbolic");
 
         // Task 2.5: Start the processing fade animation
         this._processingFadeOut();
