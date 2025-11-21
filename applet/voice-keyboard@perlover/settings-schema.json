@@ -16,6 +16,17 @@
         "tooltip": "Your OpenAI API key for Whisper (required if using OpenAI mode)",
         "dependency": "whisper-mode=openai"
     },
+    "openai-model": {
+        "type": "combobox",
+        "default": "whisper-1",
+        "description": "OpenAI Model",
+        "options": {
+            "Whisper-1 (fast, $0.006/min)": "whisper-1",
+            "GPT-4o Audio (advanced, $0.06/min)": "gpt-4o-audio-preview"
+        },
+        "tooltip": "Whisper-1: Standard speech-to-text transcription. GPT-4o Audio: Advanced model with better context understanding and emotion detection (10x more expensive)",
+        "dependency": "whisper-mode=openai"
+    },
     "local-url": {
         "type": "entry",
         "default": "http://localhost:9000/asr",

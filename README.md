@@ -11,12 +11,14 @@ Hello everyone! This app was put together in roughly 2-3 hours, almost entirely 
 - **Keyboard Layout Switcher**: Display current keyboard layout and switch between layouts
 - **Voice Input**: Record audio and transcribe it using Whisper technology
 - **Multiple Whisper Backends**:
-  - OpenAI Whisper API
-  - Local Whisper server (e.g., faster-whisper-server)
+  - OpenAI Whisper-1 API (fast, accurate, affordable)
+  - OpenAI GPT-4o Audio (advanced, emotion detection)
+  - Local Whisper server (e.g., faster-whisper-server with large-v3)
 - **Automatic Text Insertion**: Recognized text is automatically typed into the active window
 - **Configurable Settings**:
-  - Recording duration (3-60 seconds)
+  - Recording duration (10-600 seconds)
   - Language selection (auto-detect, Russian, English, Spanish, German, French, Chinese, Japanese)
+  - Model selection (Whisper-1, GPT-4o Audio, or local models)
   - API key or local server URL
 - **Visual Notifications**: System notifications for recording status and recognized text
 
@@ -79,8 +81,21 @@ Right-click the applet icon and select "Configure":
 
 1. Set **Whisper mode** to "OpenAI API"
 2. Enter your **OpenAI API Key** (get it from https://platform.openai.com/api-keys)
-3. Select your preferred **Language** (or leave as "Auto-detect")
-4. Set **Recording duration** (default: 10 seconds)
+3. Choose **OpenAI Model**:
+   - **Whisper-1** (recommended): Fast, accurate, $0.006/minute
+   - **GPT-4o Audio**: Advanced model with emotion detection and better context understanding, $0.06/minute (10x more expensive)
+4. Select your preferred **Language** (or leave as "Auto-detect")
+5. Set **Recording duration** (default: 300 seconds)
+
+**Which model to choose:**
+- **Whisper-1**: Best for simple voice-to-text transcription. Fast and cost-effective.
+- **GPT-4o Audio**: Use when you need:
+  - Better understanding of context and intent
+  - Emotion and tone detection
+  - More accurate transcription of complex speech
+  - Better handling of accents and background noise
+
+  Note: GPT-4o Audio is 10x more expensive but provides significantly better quality.
 
 #### Option B: Using Local Whisper Server
 
@@ -91,15 +106,66 @@ Right-click the applet icon and select "Configure":
 
 ##### Setting up a Local Whisper Server
 
-You can use [faster-whisper-server](https://github.com/fedirz/faster-whisper-server):
+You can use [faster-whisper-server](https://github.com/fedirz/faster-whisper-server) for fast, private, offline voice recognition.
 
+**Why use a local server:**
+- ✅ Complete privacy - audio never leaves your machine
+- ✅ No API costs - unlimited free transcription
+- ✅ Works offline - no internet connection required
+- ✅ Faster processing - especially with GPU acceleration
+- ✅ Support for all Whisper models (tiny to large-v3)
+
+**Installation with Docker (Recommended):**
+
+1. **CPU-only version** (works on any machine):
+   ```bash
+   docker run -d \
+     --name whisper-server \
+     -p 8000:8000 \
+     -e MODEL=large-v3 \
+     fedirz/faster-whisper-server:latest-cpu
+   ```
+
+2. **GPU-accelerated version** (requires NVIDIA GPU with CUDA):
+   ```bash
+   docker run -d \
+     --name whisper-server \
+     --gpus all \
+     -p 8000:8000 \
+     -e MODEL=large-v3 \
+     fedirz/faster-whisper-server:latest-cuda
+   ```
+
+3. **Configure the applet:**
+   - Whisper mode: `Local Server`
+   - Local Whisper Server URL: `http://localhost:8000/v1/audio/transcriptions`
+
+**Available models:**
+- `tiny` - Fastest, lowest accuracy (39M parameters)
+- `base` - Fast, decent accuracy (74M parameters)
+- `small` - Balanced (244M parameters)
+- `medium` - Good accuracy (769M parameters)
+- `large-v3` - **Best accuracy** (1550M parameters, recommended)
+
+**System requirements:**
+- CPU-only: 4GB RAM minimum, 8GB recommended
+- GPU (CUDA): NVIDIA GPU with 4GB+ VRAM for large-v3
+
+**Verify server is running:**
 ```bash
-# Using Docker
-docker run --gpus all -p 9000:8000 fedirz/faster-whisper-server:latest-cuda
+curl http://localhost:8000/health
+```
 
-# Or using pip
+**Alternative installation (without Docker):**
+```bash
+# Install with pip
 pip install faster-whisper-server
-faster-whisper-server --host 0.0.0.0 --port 9000
+
+# Run server
+faster-whisper-server \
+  --host 0.0.0.0 \
+  --port 8000 \
+  --model large-v3
 ```
 
 ## Usage

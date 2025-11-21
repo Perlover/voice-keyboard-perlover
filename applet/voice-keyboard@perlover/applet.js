@@ -48,6 +48,7 @@ VoiceKeyboardApplet.prototype = {
         // Bind settings
         this.settings.bind("whisper-mode", "whisperMode");
         this.settings.bind("openai-api-key", "openaiApiKey");
+        this.settings.bind("openai-model", "openaiModel");
         this.settings.bind("local-url", "localUrl");
         this.settings.bind("language", "language");
         this.settings.bind("recording-duration", "recordingDuration");
@@ -415,6 +416,7 @@ VoiceKeyboardApplet.prototype = {
 
         if (this.whisperMode === 'openai') {
             envp.push('OPENAI_API_KEY=' + this.openaiApiKey);
+            envp.push('OPENAI_MODEL=' + (this.openaiModel || 'whisper-1'));
         } else if (this.whisperMode === 'local') {
             envp.push('WHISPER_LOCAL_URL=' + this.localUrl);
         }

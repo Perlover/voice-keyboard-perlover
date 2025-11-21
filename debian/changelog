@@ -1,3 +1,15 @@
+voice-keyboard-perlover (1.1.0-1) noble; urgency=medium
+
+  * Add GPT-4o Audio model support for advanced transcription
+  * Add model selection in settings (Whisper-1 vs GPT-4o Audio)
+  * Enhance README with comprehensive faster-whisper-server documentation
+  * Add Docker installation instructions for local Whisper server
+  * Document model comparison, costs, and use cases
+  * Fix left-click event handling for voice recording
+  * Improve processing animation (use system icon instead of custom widgets)
+
+ -- perlover <perlover@perlover.com>  Thu, 21 Nov 2024 12:00:00 +0000
+
 voice-keyboard-perlover (1.0.0-1) noble; urgency=medium
 
   * Initial release
