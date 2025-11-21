@@ -200,6 +200,9 @@ VoiceKeyboardApplet.prototype = {
         // Task 2.2: Change icon to send-to-symbolic (upload arrow)
         this.set_applet_icon_symbolic_name("send-to-symbolic");
 
+        // Mark animation as active
+        this.processingAnimation = true;
+
         // Task 2.5: Start the processing fade animation
         this._processingFadeOut();
     },
@@ -218,13 +221,16 @@ VoiceKeyboardApplet.prototype = {
         this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
 
         // Animate opacity and scale together
+        let self = this;
         this.actor.ease({
             opacity: 77, // 30% of 255
             scale_x: 0.7,
             scale_y: 0.7,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, this._processingFadeIn)
+            onComplete: function() {
+                self._processingFadeIn();
+            }
         });
     },
 
@@ -239,13 +245,16 @@ VoiceKeyboardApplet.prototype = {
         }
 
         // Animate opacity and scale together
+        let self = this;
         this.actor.ease({
             opacity: 255, // 100%
             scale_x: 1.0,
             scale_y: 1.0,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, this._processingFadeOut)
+            onComplete: function() {
+                self._processingFadeOut();
+            }
         });
     },
 
