@@ -97,10 +97,14 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Task 3.2: Implement setIdleIcon() function
      * Set IDLE state icon and clear any animations/errors
+     * Task 3.2 (Animation Enhancement): Reset scale properties to 1.0
      */
     setIdleIcon: function() {
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
         this.actor.opacity = 255;
+        // Task 3.2: Reset scale properties to 1.0
+        this.actor.scale_x = 1.0;
+        this.actor.scale_y = 1.0;
         this.errorMessage = null;
 
         // Task 4.7: Remove error overlay when leaving ERROR state
@@ -114,22 +118,29 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Task 3.3: Implement startRecordingAnimation() function
      * Start smooth fade animation for RECORDING state
+     * Task 1.2: Set pivot_point for center-based scaling
      */
     startRecordingAnimation: function() {
+        // Task 1.2: Set pivot_point for center-based scaling
+        this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
         // Start fade out animation
         this._fadeOut();
     },
 
     /**
      * Fade out animation (100% to 30% opacity over 1 second)
+     * Task 1.3: Add scale animation (100% to 70%)
      */
     _fadeOut: function() {
         if (this.currentState !== STATE_RECORDING) {
             return; // Stop animation if state changed
         }
 
+        // Task 1.3: Add scale_x: 0.7 and scale_y: 0.7 to the ease() call
         this.recordingAnimation = this.actor.ease({
             opacity: 77, // 30% of 255
+            scale_x: 0.7,
+            scale_y: 0.7,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
             onComplete: Lang.bind(this, this._fadeIn)
@@ -138,14 +149,18 @@ VoiceKeyboardApplet.prototype = {
 
     /**
      * Fade in animation (30% to 100% opacity over 1 second)
+     * Task 1.4: Add scale animation (70% to 100%)
      */
     _fadeIn: function() {
         if (this.currentState !== STATE_RECORDING) {
             return; // Stop animation if state changed
         }
 
+        // Task 1.4: Add scale_x: 1.0 and scale_y: 1.0 to the ease() call
         this.recordingAnimation = this.actor.ease({
             opacity: 255, // 100%
+            scale_x: 1.0,
+            scale_y: 1.0,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
             onComplete: Lang.bind(this, this._fadeOut)
@@ -154,68 +169,100 @@ VoiceKeyboardApplet.prototype = {
 
     /**
      * Task 3.4: Stop recording animation and clean up
+     * Task 1.5: Also remove scale_x and scale_y transitions and reset to 1.0
      */
     stopRecordingAnimation: function() {
         if (this.recordingAnimation) {
-            // Remove the animation
+            // Remove the animation transitions
             this.actor.remove_transition('opacity');
+            // Task 1.5: Remove scale transitions
+            this.actor.remove_transition('scale_x');
+            this.actor.remove_transition('scale_y');
             this.recordingAnimation = null;
             // Reset opacity to full
             this.actor.opacity = 255;
+            // Task 1.5: Reset scale to 1.0
+            this.actor.scale_x = 1.0;
+            this.actor.scale_y = 1.0;
         }
     },
 
     /**
      * Task 4.2: Create 8-dot circular loading indicator component
      * Task 4.3: Implement startProcessingAnimation() function
+     * Task 2.2: Change icon to cloud-upload
+     * Task 2.5: Use new ease-based animation
      */
     startProcessingAnimation: function() {
-        // Clean up existing dots if any
+        // Clean up existing animation if any
         this._cleanupLoadingDots();
 
-        // Change icon to a processing/spinner icon
-        this.set_applet_icon_symbolic_name("emblem-synchronizing-symbolic");
+        // Task 2.2: Change icon to cloud-upload
+        this.set_applet_icon_symbolic_name("cloud-upload");
 
-        // Start icon rotation animation for visual feedback
-        this.processingAnimation = {
-            currentDot: 0,
-            timeoutId: null
-        };
-
-        this._rotateDot();
+        // Task 2.5: Start the processing fade animation
+        this._processingFadeOut();
     },
 
     /**
-     * Rotate animation for processing state
+     * Task 2.3: Processing fade out animation (opacity to 30%, scale to 70%)
+     * Mirrors recording animation pattern for processing state
      */
-    _rotateDot: function() {
-        if (this.currentState !== STATE_PROCESSING || !this.processingAnimation) {
+    _processingFadeOut: function() {
+        // Check if still in processing state
+        if (this.currentState !== STATE_PROCESSING) {
             return;
         }
 
-        // Simply keep the processing icon visible
-        // The emblem-synchronizing icon already looks like it's processing
+        // Set pivot_point for center-based scaling
+        this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
 
-        // Move to next step
-        this.processingAnimation.currentDot = (this.processingAnimation.currentDot + 1) % 8;
+        // Animate opacity and scale together
+        this.actor.ease({
+            opacity: 77, // 30% of 255
+            scale_x: 0.7,
+            scale_y: 0.7,
+            duration: 1000, // 1 second
+            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+            onComplete: Lang.bind(this, this._processingFadeIn)
+        });
+    },
 
-        // Schedule next update (2000ms / 8 steps = 250ms per step)
-        this.processingAnimation.timeoutId = GLib.timeout_add(
-            GLib.PRIORITY_DEFAULT,
-            250,
-            Lang.bind(this, this._rotateDot)
-        );
+    /**
+     * Task 2.4: Processing fade in animation (opacity to 100%, scale to 100%)
+     * Mirrors recording animation pattern for processing state
+     */
+    _processingFadeIn: function() {
+        // Check if still in processing state
+        if (this.currentState !== STATE_PROCESSING) {
+            return;
+        }
+
+        // Animate opacity and scale together
+        this.actor.ease({
+            opacity: 255, // 100%
+            scale_x: 1.0,
+            scale_y: 1.0,
+            duration: 1000, // 1 second
+            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
+            onComplete: Lang.bind(this, this._processingFadeOut)
+        });
     },
 
     /**
      * Task 4.7: Clean up loading dots animation
+     * Task 2.6: Update to clean up ease animations and reset scale
      */
     _cleanupLoadingDots: function() {
-        // Clean up any timeout
-        if (this.processingAnimation && this.processingAnimation.timeoutId) {
-            GLib.source_remove(this.processingAnimation.timeoutId);
-            this.processingAnimation.timeoutId = null;
-        }
+        // Task 2.6: Remove any active ease animations on actor
+        this.actor.remove_transition('opacity');
+        this.actor.remove_transition('scale_x');
+        this.actor.remove_transition('scale_y');
+
+        // Task 2.6: Reset opacity and scale to defaults
+        this.actor.opacity = 255;
+        this.actor.scale_x = 1.0;
+        this.actor.scale_y = 1.0;
     },
 
     /**
@@ -310,6 +357,7 @@ VoiceKeyboardApplet.prototype = {
      * Task 1.3: Implement setState() function
      * Task 3.4: Enhanced with animation cleanup
      * Task 4.7: Enhanced with processing animation and error overlay cleanup
+     * Task 3.3: Verify cleanup methods are called
      */
     setState: function(newState) {
         // Task 3.4: Clean up recording animation before state change
@@ -318,7 +366,7 @@ VoiceKeyboardApplet.prototype = {
         }
 
         // Task 4.7: Clean up processing animation before state change
-        if (this.processingAnimation) {
+        if (this.processingAnimation || this.currentState === STATE_PROCESSING) {
             this._cleanupLoadingDots();
             this.processingAnimation = null;
         }
@@ -624,7 +672,7 @@ VoiceKeyboardApplet.prototype = {
         if (this.recordingAnimation) {
             this.stopRecordingAnimation();
         }
-        if (this.processingAnimation) {
+        if (this.processingAnimation || this.currentState === STATE_PROCESSING) {
             this._cleanupLoadingDots();
         }
         this.settings.finalize();

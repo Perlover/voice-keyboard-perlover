@@ -1,3 +1,13 @@
+voice-keyboard-perlover (1.1.1-1) noble; urgency=medium
+
+  * Add synchronized opacity + scale pulsing animation for recording icon
+  * Add pulsing animation for processing icon (cloud-upload)
+  * Change processing icon to cloud-upload for clearer visual feedback
+  * Switch audio format from WAV to M4A/AAC for faster API uploads
+  * Reduce audio file size by 4-5x for improved transcription speed
+
+ -- perlover <perlover@perlover.com>  Thu, 21 Nov 2024 19:30:00 +0000
+
 voice-keyboard-perlover (1.1.0-1) noble; urgency=medium
 
   * Add GPT-4o Audio model support for advanced transcription

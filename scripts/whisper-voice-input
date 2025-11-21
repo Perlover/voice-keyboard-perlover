@@ -29,9 +29,10 @@ EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
 
 
-def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.wav"):
+def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.m4a"):
     """
     Record audio using ffmpeg until SIGTERM is received or max duration reached.
+    Records directly to M4A/AAC format for smaller file size and faster uploads.
     Returns tuple: (success: bool, reached_max: bool)
     """
     ffmpeg_process = None
@@ -47,12 +48,14 @@ def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input
 
     try:
         # Use PulseAudio default source with maximum duration
+        # Record directly to M4A/AAC format (smaller file size than WAV)
         cmd = [
             'ffmpeg',
             '-f', 'pulse',
             '-i', 'default',
             '-t', str(max_duration),
-            '-acodec', 'pcm_s16le',
+            '-c:a', 'aac',
+            '-b:a', '64k',
             '-ar', '16000',
             '-ac', '1',
             '-y',  # Overwrite output file
@@ -126,7 +129,7 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
 
         with open(audio_file, 'rb') as f:
             files = {
-                'file': (os.path.basename(audio_file), f, 'audio/wav'),
+                'file': (os.path.basename(audio_file), f, 'audio/m4a'),
                 'model': (None, model)
             }
 
@@ -198,7 +201,7 @@ def transcribe_gpt4o_audio(audio_file, api_key, language="auto"):
                             "type": "input_audio",
                             "input_audio": {
                                 "data": audio_base64,
-                                "format": "wav"
+                                "format": "m4a"
                             }
                         },
                         {
@@ -239,7 +242,7 @@ def transcribe_local(audio_file, server_url, language="auto"):
     try:
         with open(audio_file, 'rb') as f:
             files = {
-                'audio_file': (os.path.basename(audio_file), f, 'audio/wav')
+                'audio_file': (os.path.basename(audio_file), f, 'audio/m4a')
             }
 
             data = {}
@@ -381,8 +384,8 @@ def main():
     if not initial_window_id:
         print("WARNING: Could not get initial window ID, window tracking disabled", file=sys.stderr)
 
-    # Create temporary file for audio
-    temp_audio = tempfile.mktemp(suffix='.wav', prefix='whisper-voice-')
+    # Create temporary file for audio (M4A format for smaller size)
+    temp_audio = tempfile.mktemp(suffix='.m4a', prefix='whisper-voice-')
 
     try:
         # Task 5.5: Record audio with user control and maximum duration
