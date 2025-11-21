@@ -2,6 +2,10 @@
 
 A Cinnamon panel applet that combines keyboard layout switching with voice input capabilities powered by OpenAI Whisper or local Whisper servers.
 
+## Author's Note
+
+Hello everyone! This app was put together in roughly 2-3 hours, almost entirely with Claude Code. I started from a prompt I drafted while chatting with ChatGPT, and when things did not behave the way I needed, I plugged in [Agent-OS](https://github.com/buildermethods/agent-os) — a bundle of planning helpers for Claude Code, Codex, and similar agents that makes project planning precise. After that I polished the project into what you see now: on Linux Cinnamon it drops a microphone icon into the tray; you can focus any window, click the icon, speak for up to five minutes (configurable), and the text is sent either to OpenAI Whisper using your API key or to your own Whisper server built on the open-source Whisper stack. The self-hosted path exists but has not been tested. I never touched a traditional text editor while building this project, including this README — I dictated everything to ChatGPT and asked it to translate to English. Consider this app a small proof-of-concept for vibe coding.
+
 ## Features
 
 - **Keyboard Layout Switcher**: Display current keyboard layout and switch between layouts
