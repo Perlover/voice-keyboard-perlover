@@ -136,7 +136,6 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             if language != "auto":
                 files['language'] = (None, language)
 
-            print(f"Sending to OpenAI {model} API...", file=sys.stderr)
             response = requests.post(url, headers=headers, files=files, timeout=30)
 
         if response.status_code == 200:
@@ -330,24 +329,38 @@ def copy_to_clipboard(text):
 
 def type_text(text):
     """
-    Type text into the active window using xdotool - instant insertion
-    Task 5.2: Remove character-by-character typing delays
+    Type text into the active window using xclip + xdotool key ctrl+v
+    This method doesn't block Cinnamon's animation loop (unlike xdotool type)
     """
     if not text:
         return False
 
     try:
-        # Task 5.2: Use single xdotool command for instant text insertion
-        # Remove all delays - text should appear instantly
+        # Step 1: Copy text to clipboard using xclip
+        # -i flag explicitly sets input mode (read from stdin)
+        # Don't use capture_output - it can cause xclip to hang
         result = subprocess.run(
-            ['xdotool', 'type', '--', text],
-            capture_output=True,
-            text=True,
-            timeout=10
+            ['xclip', '-selection', 'clipboard', '-i'],
+            input=text.encode(),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5
         )
 
         if result.returncode != 0:
-            print(f"ERROR: Failed to type text: {result.stderr}", file=sys.stderr)
+            print(f"ERROR: Failed to copy to clipboard", file=sys.stderr)
+            return False
+
+        # Step 2: Simulate Ctrl+V to paste
+        result = subprocess.run(
+            ['xdotool', 'key', '--clearmodifiers', 'ctrl+v'],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+
+        if result.returncode != 0:
+            print(f"ERROR: Failed to paste: {result.stderr}", file=sys.stderr)
             return False
 
         return True

@@ -9,6 +9,7 @@ const Settings = imports.ui.settings;
 const Util = imports.misc.util;
 const Clutter = imports.gi.Clutter;
 const ModalDialog = imports.ui.modalDialog;
+const Mainloop = imports.mainloop;
 
 // State constants
 const STATE_IDLE = 'STATE_IDLE';
@@ -203,15 +204,15 @@ VoiceKeyboardApplet.prototype = {
         // Mark animation as active
         this.processingAnimation = true;
 
-        // Task 2.5: Start the processing fade animation
-        this._processingFadeOut();
+        // Task 2.5: Start the processing timeline animation
+        this._startProcessingTimeline();
     },
 
     /**
-     * Task 2.3: Processing fade out animation (opacity to 30%, scale to 70%)
-     * Mirrors recording animation pattern for processing state
+     * Task 2.3: Processing animation using Mainloop.timeout_add
+     * Simple step-based animation with 100ms intervals
      */
-    _processingFadeOut: function() {
+    _startProcessingTimeline: function() {
         // Check if still in processing state
         if (this.currentState !== STATE_PROCESSING) {
             return;
@@ -220,49 +221,76 @@ VoiceKeyboardApplet.prototype = {
         // Set pivot_point for center-based scaling
         this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
 
-        // Animate opacity and scale together
-        let self = this;
-        this.actor.ease({
-            opacity: 77, // 30% of 255
-            scale_x: 0.7,
-            scale_y: 0.7,
-            duration: 1000, // 1 second
-            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: function() {
-                self._processingFadeIn();
-            }
-        });
+        // Animation state: 0-19 = fade out, 20-39 = fade in (100ms * 40 = 4 sec cycle)
+        this._animStep = 0;
+        this._lastLogTime = 0;
+
+        // Start animation loop with GLib.timeout_add at HIGH priority
+        // Using GLib directly instead of Mainloop for more control
+        this._processingTimeoutId = GLib.timeout_add(GLib.PRIORITY_HIGH, 100, Lang.bind(this, this._animateProcessingStep));
     },
 
     /**
-     * Task 2.4: Processing fade in animation (opacity to 100%, scale to 100%)
-     * Mirrors recording animation pattern for processing state
+     * Single animation step - called every 100ms
+     * Returns GLib.SOURCE_CONTINUE to keep running
      */
-    _processingFadeIn: function() {
-        // Check if still in processing state
-        if (this.currentState !== STATE_PROCESSING) {
-            return;
-        }
-
-        // Animate opacity and scale together
-        let self = this;
-        this.actor.ease({
-            opacity: 255, // 100%
-            scale_x: 1.0,
-            scale_y: 1.0,
-            duration: 1000, // 1 second
-            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: function() {
-                self._processingFadeOut();
+    _animateProcessingStep: function() {
+        try {
+            // Check if still in processing state
+            if (this.currentState !== STATE_PROCESSING) {
+                this._processingTimeoutId = null;
+                return GLib.SOURCE_REMOVE;
             }
-        });
+
+            // Calculate opacity and scale based on step (0-39)
+            let opacity, scale;
+            if (this._animStep < 20) {
+                // Fade out: steps 0-19
+                let t = this._animStep / 20.0; // 0 to 1
+                opacity = 255 - (178 * t); // 255 to 77
+                scale = 1.0 - (0.3 * t);   // 1.0 to 0.7
+            } else {
+                // Fade in: steps 20-39
+                let t = (this._animStep - 20) / 20.0; // 0 to 1
+                opacity = 77 + (178 * t);  // 77 to 255
+                scale = 0.7 + (0.3 * t);   // 0.7 to 1.0
+            }
+
+            this.actor.opacity = Math.round(opacity);
+            this.actor.scale_x = scale;
+            this.actor.scale_y = scale;
+
+            // Force redraw to prevent compositor from freezing animation
+            this.actor.queue_redraw();
+
+            // Advance step
+            this._animStep = (this._animStep + 1) % 40;
+
+            return GLib.SOURCE_CONTINUE;
+        } catch (e) {
+            global.logError("[voice-keyboard] Animation error: " + e);
+            return GLib.SOURCE_REMOVE;
+        }
+    },
+
+    /**
+     * Task 2.4: Stop processing animation
+     */
+    _stopProcessingTimeline: function() {
+        if (this._processingTimeoutId) {
+            GLib.source_remove(this._processingTimeoutId);
+            this._processingTimeoutId = null;
+        }
     },
 
     /**
      * Task 4.7: Clean up loading dots animation
-     * Task 2.6: Update to clean up ease animations and reset scale
+     * Task 2.6: Update to clean up timeline and reset scale
      */
     _cleanupLoadingDots: function() {
+        // Stop timeline if running
+        this._stopProcessingTimeline();
+
         // Task 2.6: Remove any active ease animations on actor
         this.actor.remove_transition('opacity');
         this.actor.remove_transition('scale_x');
@@ -478,9 +506,9 @@ VoiceKeyboardApplet.prototype = {
             envp.push('WHISPER_LOCAL_URL=' + this.localUrl);
         }
 
-        // Launch script
+        // Launch script WITHOUT pipes to avoid blocking
         try {
-            let [success, pid, stdin, stdout, stderr] = GLib.spawn_async_with_pipes(
+            let [success, pid] = GLib.spawn_async(
                 null,
                 [this.scriptPath],
                 envp,
@@ -489,8 +517,8 @@ VoiceKeyboardApplet.prototype = {
             );
 
             if (success) {
-                // Store process reference
-                this.recordingProcess = { pid: pid, stdout: stdout, stderr: stderr };
+                // Store process reference (no file descriptors)
+                this.recordingProcess = { pid: pid };
 
                 // Task 5.7: Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
@@ -504,35 +532,9 @@ VoiceKeyboardApplet.prototype = {
                         exitCode = (status >> 8) & 0xFF;
                     }
 
-                    // Read output from stdout
-                    let outReader = new Gio.DataInputStream({
-                        base_stream: new Gio.UnixInputStream({ fd: stdout, close_fd: true })
-                    });
-
-                    // Read all lines from stdout
+                    // No pipe reading - we just use exit code
                     let outputLines = [];
-                    let line, length;
-                    try {
-                        while ((([line, length] = outReader.read_line(null)) && line !== null)) {
-                            outputLines.push(line.toString().trim());
-                        }
-                    } catch (e) {
-                        global.logError("Error reading script output: " + e);
-                    }
-
-                    // Read error output for detailed error messages
-                    let errReader = new Gio.DataInputStream({
-                        base_stream: new Gio.UnixInputStream({ fd: stderr, close_fd: true })
-                    });
-
                     let errorLines = [];
-                    try {
-                        while ((([line, length] = errReader.read_line(null)) && line !== null)) {
-                            errorLines.push(line.toString().trim());
-                        }
-                    } catch (e) {
-                        global.logError("Error reading script stderr: " + e);
-                    }
 
                     // Task 5.7: Handle different exit codes
                     if (exitCode === EXIT_SUCCESS) {
