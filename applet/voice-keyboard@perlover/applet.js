@@ -41,7 +41,6 @@ VoiceKeyboardApplet.prototype = {
         this.currentState = STATE_IDLE;
         this.recordingAnimation = null;
         this.processingAnimation = null;
-        this.loadingDots = [];
         this.errorMessage = null;
         this.recordingProcess = null;
         this.errorOverlay = null;
@@ -76,6 +75,9 @@ VoiceKeyboardApplet.prototype = {
             Util.spawnCommandLine("cinnamon-settings applets " + metadata.uuid);
         }));
         this.menu.addMenuItem(settingsItem);
+
+        // Connect button press event handler for right-click menu
+        this.actor.connect('button-press-event', Lang.bind(this, this._onButtonPressEvent));
     },
 
     /**
@@ -170,28 +172,10 @@ VoiceKeyboardApplet.prototype = {
         // Clean up existing dots if any
         this._cleanupLoadingDots();
 
-        // Create container for loading dots
-        let iconSize = 24; // Standard panel icon size
-        let dotRadius = iconSize * 0.6; // Radius of circle containing dots
-        let dotSize = 3; // Size of each dot
+        // Change icon to a processing/spinner icon
+        this.set_applet_icon_symbolic_name("emblem-synchronizing-symbolic");
 
-        // Create 8 dots in a circle
-        this.loadingDots = [];
-        for (let i = 0; i < 8; i++) {
-            let angle = (i * Math.PI / 4) - Math.PI / 2; // Start from top, go clockwise
-            let dot = new St.Widget({
-                style: 'background-color: rgba(255, 255, 255, 0.3); border-radius: 50%;',
-                width: dotSize,
-                height: dotSize,
-                x: iconSize / 2 + dotRadius * Math.cos(angle) - dotSize / 2,
-                y: iconSize / 2 + dotRadius * Math.sin(angle) - dotSize / 2
-            });
-
-            this.actor.add_actor(dot);
-            this.loadingDots.push(dot);
-        }
-
-        // Start animation - rotate bright dot counterclockwise
+        // Start icon rotation animation for visual feedback
         this.processingAnimation = {
             currentDot: 0,
             timeoutId: null
@@ -201,28 +185,20 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Rotate the bright dot counterclockwise through positions
+     * Rotate animation for processing state
      */
     _rotateDot: function() {
         if (this.currentState !== STATE_PROCESSING || !this.processingAnimation) {
             return;
         }
 
-        // Update dot brightness
-        for (let i = 0; i < this.loadingDots.length; i++) {
-            if (i === this.processingAnimation.currentDot) {
-                // Bright dot
-                this.loadingDots[i].set_style('background-color: rgba(255, 255, 255, 1.0); border-radius: 50%;');
-            } else {
-                // Dim dot
-                this.loadingDots[i].set_style('background-color: rgba(255, 255, 255, 0.3); border-radius: 50%;');
-            }
-        }
+        // Simply keep the processing icon visible
+        // The emblem-synchronizing icon already looks like it's processing
 
-        // Move to next dot (counterclockwise = decrement)
-        this.processingAnimation.currentDot = (this.processingAnimation.currentDot + 7) % 8;
+        // Move to next step
+        this.processingAnimation.currentDot = (this.processingAnimation.currentDot + 1) % 8;
 
-        // Schedule next rotation (2000ms / 8 dots = 250ms per dot)
+        // Schedule next update (2000ms / 8 steps = 250ms per step)
         this.processingAnimation.timeoutId = GLib.timeout_add(
             GLib.PRIORITY_DEFAULT,
             250,
@@ -234,16 +210,7 @@ VoiceKeyboardApplet.prototype = {
      * Task 4.7: Clean up loading dots animation
      */
     _cleanupLoadingDots: function() {
-        if (this.loadingDots && this.loadingDots.length > 0) {
-            for (let i = 0; i < this.loadingDots.length; i++) {
-                if (this.loadingDots[i]) {
-                    this.actor.remove_actor(this.loadingDots[i]);
-                    this.loadingDots[i].destroy();
-                }
-            }
-            this.loadingDots = [];
-        }
-
+        // Clean up any timeout
         if (this.processingAnimation && this.processingAnimation.timeoutId) {
             GLib.source_remove(this.processingAnimation.timeoutId);
             this.processingAnimation.timeoutId = null;
@@ -638,12 +605,16 @@ VoiceKeyboardApplet.prototype = {
      * Show settings menu on right-click only
      */
     _onButtonPressEvent: function(actor, event) {
-        // Check if right mouse button (button 3)
         if (event.get_button() === 3) {
+            // Right-click: show settings menu
             this.menu.toggle();
-            return true; // Prevent event propagation
+            return Clutter.EVENT_STOP;
+        } else if (event.get_button() === 1) {
+            // Left-click: handle voice recording toggle
+            this.handleLeftClick();
+            return Clutter.EVENT_STOP;
         }
-        return false;
+        return Clutter.EVENT_PROPAGATE;
     },
 
     on_applet_removed_from_panel: function() {
