@@ -22,14 +22,24 @@ jobs:
       - name: Build deb package
         run: make deb
 
+      - name: Collect artifacts
+        run: |
+          mkdir -p artifacts
+          shopt -s nullglob
+          files=(../voice-keyboard-perlover_*.deb)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No .deb files found"; exit 1
+          fi
+          cp "${files[@]}" artifacts/
+
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4
         with:
           name: voice-keyboard-perlover-deb
-          path: ../voice-keyboard-perlover_*.deb
+          path: artifacts/*.deb
 
       - name: Attach to GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: ../voice-keyboard-perlover_*.deb
+          files: artifacts/*.deb
