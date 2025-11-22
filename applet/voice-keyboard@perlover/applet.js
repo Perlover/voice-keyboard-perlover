@@ -15,6 +15,7 @@ const Mainloop = imports.mainloop;
 const STATE_IDLE = 'STATE_IDLE';
 const STATE_RECORDING = 'STATE_RECORDING';
 const STATE_PROCESSING = 'STATE_PROCESSING';
+const STATE_TYPING = 'STATE_TYPING';
 const STATE_ERROR = 'STATE_ERROR';
 
 // Exit codes from Python script
@@ -24,6 +25,7 @@ const EXIT_RECORDING_ERROR = 2;
 const EXIT_TRANSCRIPTION_ERROR = 3;
 const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
+const EXIT_NEEDS_TYPING = 6;  // Text ready, applet should type it
 
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
@@ -53,6 +55,7 @@ VoiceKeyboardApplet.prototype = {
         this.settings.bind("local-url", "localUrl");
         this.settings.bind("language", "language");
         this.settings.bind("recording-duration", "recordingDuration");
+        this.settings.bind("paste-method", "pasteMethod");
         this.settings.bind("script-path", "scriptPath");
 
         // Set icon
@@ -108,11 +111,10 @@ VoiceKeyboardApplet.prototype = {
         this.actor.scale_y = 1.0;
         this.errorMessage = null;
 
-        // Task 4.7: Remove error overlay when leaving ERROR state
-        if (this.errorOverlay) {
-            this.actor.remove_actor(this.errorOverlay);
-            this.errorOverlay.destroy();
-            this.errorOverlay = null;
+        // Reset icon style (remove red color from error state)
+        let iconChild = this.actor.get_first_child();
+        if (iconChild && iconChild.set_style) {
+            iconChild.set_style('');
         }
     },
 
@@ -303,24 +305,46 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
+     * Show typing icon (keyboard) for STATE_TYPING
+     * Used when xdotool type method is selected
+     */
+    showTypingIcon: function() {
+        // Use input-keyboard-symbolic for typing state
+        this.set_applet_icon_symbolic_name("input-keyboard-symbolic");
+        this.actor.opacity = 255;
+        this.actor.scale_x = 1.0;
+        this.actor.scale_y = 1.0;
+
+        // Reset icon style
+        let iconChild = this.actor.get_first_child();
+        if (iconChild && iconChild.set_style) {
+            iconChild.set_style('');
+        }
+    },
+
+    /**
      * Task 4.4: Implement showErrorIcon() function
-     * Keep normal microphone icon, add red warning triangle overlay
+     * Replace microphone icon with red warning triangle
      */
     showErrorIcon: function() {
-        // Keep normal microphone icon
-        this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
+        // Remove any existing error overlay (cleanup from previous errors)
+        if (this.errorOverlay) {
+            this.actor.remove_actor(this.errorOverlay);
+            this.errorOverlay.destroy();
+            this.errorOverlay = null;
+        }
+
+        // Replace microphone icon with red warning triangle
+        this.set_applet_icon_symbolic_name("dialog-warning-symbolic");
         this.actor.opacity = 255;
+        this.actor.scale_x = 1.0;
+        this.actor.scale_y = 1.0;
 
-        // Create warning triangle overlay
-        this.errorOverlay = new St.Icon({
-            icon_name: 'dialog-warning-symbolic',
-            icon_type: St.IconType.SYMBOLIC,
-            style: 'color: #ff0000; font-size: 12px;',
-            x_align: Clutter.ActorAlign.END,
-            y_align: Clutter.ActorAlign.END
-        });
-
-        this.actor.add_actor(this.errorOverlay);
+        // Apply red color to the icon using style
+        let iconChild = this.actor.get_first_child();
+        if (iconChild && iconChild.set_style) {
+            iconChild.set_style('color: #ff4444;');
+        }
     },
 
     /**
@@ -431,6 +455,9 @@ VoiceKeyboardApplet.prototype = {
             case STATE_PROCESSING:
                 this.startProcessingAnimation();
                 break;
+            case STATE_TYPING:
+                this.showTypingIcon();
+                break;
             case STATE_ERROR:
                 this.showErrorIcon();
                 break;
@@ -468,6 +495,11 @@ VoiceKeyboardApplet.prototype = {
                 this.cancelTranscription();
                 break;
 
+            case STATE_TYPING:
+                // Cancel typing and return to idle
+                this.cancelTranscription();
+                break;
+
             case STATE_ERROR:
                 // Show error dialog
                 this.showErrorDialog();
@@ -498,6 +530,7 @@ VoiceKeyboardApplet.prototype = {
         envp.push('WHISPER_MODE=' + this.whisperMode);
         envp.push('WHISPER_LANGUAGE=' + this.language);
         envp.push('RECORDING_DURATION=' + this.recordingDuration);
+        envp.push('PASTE_METHOD=' + (this.pasteMethod || 'primary'));
 
         if (this.whisperMode === 'openai') {
             envp.push('OPENAI_API_KEY=' + this.openaiApiKey);
@@ -506,9 +539,9 @@ VoiceKeyboardApplet.prototype = {
             envp.push('WHISPER_LOCAL_URL=' + this.localUrl);
         }
 
-        // Launch script WITHOUT pipes to avoid blocking
+        // Launch script with stdout pipe to read recognized text
         try {
-            let [success, pid] = GLib.spawn_async(
+            let [success, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes(
                 null,
                 [this.scriptPath],
                 envp,
@@ -517,63 +550,58 @@ VoiceKeyboardApplet.prototype = {
             );
 
             if (success) {
-                // Store process reference (no file descriptors)
+                // Store process reference
                 this.recordingProcess = { pid: pid };
 
-                // Task 5.7: Watch for process completion and handle exit codes
+                // Create IOChannel to read stdout
+                let stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
+                stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
+
+                // Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
+                    // Read stdout before closing
+                    let outputText = '';
+                    try {
+                        let [readStatus, stdoutData] = stdoutChannel.read_to_end();
+                        if (stdoutData) {
+                            outputText = stdoutData.toString().trim();
+                        }
+                        stdoutChannel.shutdown(false);
+                    } catch (e) {
+                        global.logError("[voice-keyboard] Error reading stdout: " + e);
+                    }
+
                     GLib.spawn_close_pid(pid);
                     this.recordingProcess = null;
 
                     // Get exit code from status
                     let exitCode = 0;
                     if (status !== null) {
-                        // Extract exit code (status contains signal and exit code)
                         exitCode = (status >> 8) & 0xFF;
                     }
 
-                    // No pipe reading - we just use exit code
-                    let outputLines = [];
-                    let errorLines = [];
-
-                    // Task 5.7: Handle different exit codes
+                    // Handle different exit codes
                     if (exitCode === EXIT_SUCCESS) {
-                        // Success - check if window changed
-                        if (outputLines.length > 0 && outputLines[0] === "WINDOW_CHANGED") {
-                            // Window changed - show notification with recognized text
-                            let recognizedText = outputLines.length > 1 ? outputLines[1] : "Text copied to clipboard";
-                            Main.notify(
-                                "Voice Keyboard Perlover",
-                                "Window changed - text copied to clipboard:\n" + recognizedText
-                            );
-                        }
-                        // Silently return to IDLE on success (no notification if text was typed)
+                        // Success - text was pasted via PRIMARY method
                         this.setState(STATE_IDLE);
 
+                    } else if (exitCode === EXIT_NEEDS_TYPING) {
+                        // Text ready, applet should type it using xdotool
+                        if (outputText) {
+                            this._typeTextWithXdotool(outputText);
+                        } else {
+                            this.setState(STATE_IDLE);
+                        }
+
                     } else if (exitCode === EXIT_TIMEOUT) {
-                        // Maximum duration reached
                         Main.notify(
                             "Voice Keyboard Perlover",
                             "Maximum recording time reached"
                         );
-
-                        // Check if window changed
-                        if (outputLines.length > 0 && outputLines[0] === "WINDOW_CHANGED") {
-                            let recognizedText = outputLines.length > 1 ? outputLines[1] : "";
-                            if (recognizedText) {
-                                Main.notify(
-                                    "Voice Keyboard Perlover",
-                                    "Window changed - text copied to clipboard:\n" + recognizedText
-                                );
-                            }
-                        }
-
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TRANSCRIPTION_ERROR) {
-                        // Transcription error - transition to ERROR state
-                        let errorMsg = errorLines.length > 0 ? errorLines.join("\n") : "Transcription failed";
-                        this.errorMessage = errorMsg;
+                        this.errorMessage = "Transcription failed";
                         Main.notify(
                             "Voice Keyboard Perlover",
                             "Transcription failed"
@@ -581,9 +609,7 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_ERROR);
 
                     } else if (exitCode === EXIT_RECORDING_ERROR) {
-                        // Recording error
-                        let errorMsg = errorLines.length > 0 ? errorLines.join("\n") : "Recording failed";
-                        this.errorMessage = errorMsg;
+                        this.errorMessage = "Recording failed";
                         Main.notify(
                             "Voice Keyboard Perlover",
                             "Recording failed"
@@ -591,7 +617,6 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_ERROR);
 
                     } else if (exitCode === EXIT_CONFIG_ERROR) {
-                        // Configuration error
                         Main.notify(
                             "Voice Keyboard Perlover",
                             "Configuration error - please check settings"
@@ -599,16 +624,10 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_CANCELLED) {
-                        // Cancelled by user - silently return to IDLE
                         this.setState(STATE_IDLE);
 
                     } else {
-                        // Unknown exit code
-                        let errorMsg = "Process exited with code " + exitCode;
-                        if (errorLines.length > 0) {
-                            errorMsg += "\n" + errorLines.join("\n");
-                        }
-                        this.errorMessage = errorMsg;
+                        this.errorMessage = "Process exited with code " + exitCode;
                         Main.notify(
                             "Voice Keyboard Perlover",
                             "Voice input failed"
@@ -626,6 +645,50 @@ VoiceKeyboardApplet.prototype = {
             this.errorMessage = "Failed to start voice input: " + e.message;
             this.setState(STATE_ERROR);
         }
+    },
+
+    /**
+     * Type text using xdotool in STATE_TYPING state
+     * Shows keyboard icon while typing
+     */
+    _typeTextWithXdotool: function(text) {
+        // Transition to TYPING state (shows keyboard icon)
+        this.setState(STATE_TYPING);
+
+        // Use idle_add to defer xdotool start to next event loop iteration
+        // This allows the icon to render before xdotool blocks X11 event loop
+        GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
+            // Launch xdotool type as separate process
+            try {
+                let [success, pid] = GLib.spawn_async(
+                    null,
+                    ['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', text],
+                    null,
+                    GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                    null
+                );
+
+                if (success) {
+                    this.recordingProcess = { pid: pid };
+
+                    // Watch for xdotool completion
+                    GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
+                        GLib.spawn_close_pid(pid);
+                        this.recordingProcess = null;
+
+                        // Return to IDLE after typing completes
+                        this.setState(STATE_IDLE);
+                    }));
+                } else {
+                    this.setState(STATE_IDLE);
+                }
+            } catch (e) {
+                global.logError("[voice-keyboard] xdotool error: " + e);
+                this.setState(STATE_IDLE);
+            }
+
+            return GLib.SOURCE_REMOVE;
+        }));
     },
 
     /**

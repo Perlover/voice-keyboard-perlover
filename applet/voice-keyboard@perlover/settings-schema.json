@@ -60,6 +60,16 @@
         "description": "Maximum Recording Duration",
         "tooltip": "Safety limit for maximum recording duration. Recording will automatically stop and transcribe when this limit is reached. Default: 5 minutes (300 seconds)."
     },
+    "paste-method": {
+        "type": "combobox",
+        "default": "primary",
+        "description": "Text paste method",
+        "options": {
+            "Middle-click (PRIMARY selection)": "primary",
+            "Simulate typing (xdotool type)": "xdotool"
+        },
+        "tooltip": "Method to insert recognized text. Middle-click is fast and works in most apps including terminals. Simulate typing is slower but more universal."
+    },
     "script-path": {
         "type": "entry",
         "default": "/usr/bin/whisper-voice-input",

@@ -27,6 +27,7 @@ EXIT_RECORDING_ERROR = 2
 EXIT_TRANSCRIPTION_ERROR = 3
 EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
+EXIT_NEEDS_TYPING = 6  # Text ready, applet should type it (for xdotool method)
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.m4a"):
@@ -327,20 +328,18 @@ def copy_to_clipboard(text):
         return False
 
 
-def type_text(text):
+def type_text_primary(text):
     """
-    Type text into the active window using xclip + xdotool key ctrl+v
-    This method doesn't block Cinnamon's animation loop (unlike xdotool type)
+    Type text using PRIMARY selection + middle-click.
+    Fast method that works in most X11 apps including terminals.
     """
     if not text:
         return False
 
     try:
-        # Step 1: Copy text to clipboard using xclip
-        # -i flag explicitly sets input mode (read from stdin)
-        # Don't use capture_output - it can cause xclip to hang
+        # Step 1: Copy text to PRIMARY selection using xclip
         result = subprocess.run(
-            ['xclip', '-selection', 'clipboard', '-i'],
+            ['xclip', '-selection', 'primary', '-i'],
             input=text.encode(),
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
@@ -348,26 +347,80 @@ def type_text(text):
         )
 
         if result.returncode != 0:
-            print(f"ERROR: Failed to copy to clipboard", file=sys.stderr)
+            print("ERROR: Failed to copy to PRIMARY selection", file=sys.stderr)
             return False
 
-        # Step 2: Simulate Ctrl+V to paste
+        # Step 2: Simulate middle-click to paste
         result = subprocess.run(
-            ['xdotool', 'key', '--clearmodifiers', 'ctrl+v'],
+            ['xdotool', 'click', '2'],
             capture_output=True,
             text=True,
             timeout=5
         )
 
         if result.returncode != 0:
-            print(f"ERROR: Failed to paste: {result.stderr}", file=sys.stderr)
+            print(f"ERROR: Failed to middle-click: {result.stderr}", file=sys.stderr)
+            return False
+
+        # Step 3: Clear PRIMARY selection after paste (security)
+        subprocess.run(
+            ['xclip', '-selection', 'primary', '-i'],
+            input=b'',
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=2
+        )
+
+        return True
+
+    except FileNotFoundError:
+        print("ERROR: xclip is not installed", file=sys.stderr)
+        return False
+    except Exception as e:
+        print(f"ERROR: PRIMARY paste failed: {e}", file=sys.stderr)
+        return False
+
+
+def type_text_xdotool(text):
+    """
+    Type text using xdotool type.
+    Slower but more universal method.
+    Warning: This blocks X11 event loop during typing.
+    """
+    if not text:
+        return False
+
+    try:
+        result = subprocess.run(
+            ['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', text],
+            capture_output=True,
+            text=True,
+            timeout=60  # Longer timeout for long texts
+        )
+
+        if result.returncode != 0:
+            print(f"ERROR: xdotool type failed: {result.stderr}", file=sys.stderr)
             return False
 
         return True
 
     except Exception as e:
-        print(f"ERROR: Typing failed: {e}", file=sys.stderr)
+        print(f"ERROR: xdotool type failed: {e}", file=sys.stderr)
         return False
+
+
+def type_text(text, method='primary'):
+    """
+    Type text into the active window using specified method.
+
+    Methods:
+    - 'primary': Use PRIMARY selection + middle-click (fast, works in terminals)
+    - 'xdotool': Use xdotool type (slow but universal)
+    """
+    if method == 'xdotool':
+        return type_text_xdotool(text)
+    else:
+        return type_text_primary(text)
 
 
 def main():
@@ -376,6 +429,7 @@ def main():
     language = os.environ.get('WHISPER_LANGUAGE', 'auto')
     max_duration = int(os.environ.get('RECORDING_DURATION', '300'))
     openai_model = os.environ.get('OPENAI_MODEL', 'whisper-1')
+    paste_method = os.environ.get('PASTE_METHOD', 'primary').lower()
 
     # Validate configuration
     if whisper_mode == 'openai':
@@ -457,16 +511,25 @@ def main():
                     sys.exit(EXIT_SUCCESS)
 
         # Window didn't change - type text normally
-        if type_text(text):
-            # Output the recognized text to stdout (for the applet)
-            print(text, file=sys.stdout)
+        print(f"Using paste method: {paste_method}", file=sys.stderr)
 
-            if reached_max:
-                sys.exit(EXIT_TIMEOUT)
-            else:
-                sys.exit(EXIT_SUCCESS)
+        if paste_method == 'xdotool':
+            # For xdotool method: output text and let applet handle typing
+            # This allows applet to show TYPING state with ellipsis icon
+            print(text, file=sys.stdout)
+            sys.exit(EXIT_NEEDS_TYPING)
         else:
-            sys.exit(EXIT_TRANSCRIPTION_ERROR)
+            # For primary method: paste text directly (fast)
+            if type_text(text, paste_method):
+                # Output the recognized text to stdout (for the applet)
+                print(text, file=sys.stdout)
+
+                if reached_max:
+                    sys.exit(EXIT_TIMEOUT)
+                else:
+                    sys.exit(EXIT_SUCCESS)
+            else:
+                sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
     finally:
         # Cleanup temporary file

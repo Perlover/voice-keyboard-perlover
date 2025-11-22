@@ -1,3 +1,15 @@
+voice-keyboard-perlover (1.2.0-1) noble; urgency=medium
+
+  * Add configurable paste method setting (PRIMARY selection or xdotool type)
+  * Add PRIMARY selection + middle-click paste method (default, fast)
+  * Add xdotool type paste method with keyboard icon during typing
+  * Fix animation freeze caused by xdotool type blocking X11 event loop
+  * Add xclip dependency for clipboard operations
+  * Clear PRIMARY selection after paste for security
+  * Use GLib.idle_add for proper icon rendering before xdotool starts
+
+ -- perlover <perlover@perlover.com>  Fri, 22 Nov 2024 01:00:00 +0000
+
 voice-keyboard-perlover (1.1.1-1) noble; urgency=medium
 
   * Add synchronized opacity + scale pulsing animation for recording icon
