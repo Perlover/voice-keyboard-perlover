@@ -10,7 +10,7 @@
    Or alternatively:
    ```bash
    make deb
-   sudo apt install ../voice-keyboard-perlover_1.0.0-1_all.deb
+   sudo apt install ../voice-keyboard-perlover_*_all.deb
    ```
 
 2. **Add to panel:**
