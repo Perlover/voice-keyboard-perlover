@@ -51,7 +51,7 @@ make deb-install
 
 2. Install the package with dependencies:
    ```bash
-   sudo apt install ../voice-keyboard-perlover_1.0.0-1_all.deb
+   sudo apt install ../voice-keyboard-perlover_*_all.deb
    ```
 
    Note: Use `apt install` (not `dpkg -i`) to automatically install all dependencies.
