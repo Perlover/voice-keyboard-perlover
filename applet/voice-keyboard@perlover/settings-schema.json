@@ -62,13 +62,13 @@
     },
     "paste-method": {
         "type": "combobox",
-        "default": "primary",
+        "default": "xdotool",
         "description": "Text paste method",
         "options": {
             "Middle-click (PRIMARY selection)": "primary",
             "Simulate typing (xdotool type)": "xdotool"
         },
-        "tooltip": "Method to insert recognized text. Middle-click is fast and works in most apps including terminals. Simulate typing is slower but more universal."
+        "tooltip": "Method to insert recognized text. Simulate typing is more reliable and works in all apps. Middle-click is fast but may not work correctly when mouse cursor is not in the text input area."
     },
     "script-path": {
         "type": "entry",
