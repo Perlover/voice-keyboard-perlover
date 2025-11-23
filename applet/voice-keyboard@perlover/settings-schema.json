@@ -66,9 +66,9 @@
         "description": "Text paste method",
         "options": {
             "Middle-click (PRIMARY selection)": "primary",
-            "Simulate typing (xdotool type)": "xdotool"
+            "Clipboard paste (Shift+Insert)": "xdotool"
         },
-        "tooltip": "Method to insert recognized text. Simulate typing is more reliable and works in all apps. Middle-click is fast but may not work correctly when mouse cursor is not in the text input area."
+        "tooltip": "Method to insert recognized text. Clipboard paste (Shift+Insert) is fast and works in all apps including terminals. Middle-click is an alternative but requires mouse cursor to be in the text input area."
     },
     "script-path": {
         "type": "entry",

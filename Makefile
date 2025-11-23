@@ -1,7 +1,7 @@
 .PHONY: all clean install uninstall deb deb-install deb-clean help
 
 PACKAGE_NAME = voice-keyboard-perlover
-VERSION = 1.2.1
+VERSION = 1.3.0
 APPLET_UUID = voice-keyboard@perlover
 
 PREFIX ?= /usr

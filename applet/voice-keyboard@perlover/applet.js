@@ -58,6 +58,13 @@ VoiceKeyboardApplet.prototype = {
         this.settings.bind("paste-method", "pasteMethod");
         this.settings.bind("script-path", "scriptPath");
 
+        // Migration v1.3.0: Force xdotool method for better reliability
+        // Middle-click has issues when mouse cursor is not in text input area
+        if (this.pasteMethod === 'primary') {
+            this.settings.setValue("paste-method", "xdotool");
+            this.pasteMethod = "xdotool";
+        }
+
         // Set icon
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
 
@@ -586,12 +593,9 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_NEEDS_TYPING) {
-                        // Text ready, applet should type it using xdotool
-                        if (outputText) {
-                            this._typeTextWithXdotool(outputText);
-                        } else {
-                            this.setState(STATE_IDLE);
-                        }
+                        // Legacy: In v1.3.0+ xdotool method is handled in Python script
+                        // This code path should not be reached anymore
+                        this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TIMEOUT) {
                         Main.notify(
