@@ -379,8 +379,12 @@ def type_text_primary(text):
 
 def type_text_xdotool(text, window_id=None):
     """
-    Type text using CLIPBOARD + Shift+Insert.
+    Type text using CLIPBOARD + PRIMARY + Shift+Insert.
     Fast method that works in most apps including terminals.
+
+    We copy to both selections because:
+    - CLIPBOARD: used by most GUI apps with Shift+Insert
+    - PRIMARY: used by terminals with Shift+Insert (they treat it like middle-click)
 
     Args:
         text: Text to paste
@@ -390,7 +394,7 @@ def type_text_xdotool(text, window_id=None):
         return False
 
     try:
-        # Step 1: Copy text to CLIPBOARD selection using xclip
+        # Step 1a: Copy text to CLIPBOARD selection using xclip
         result = subprocess.run(
             ['xclip', '-selection', 'clipboard', '-i'],
             input=text.encode(),
@@ -402,6 +406,16 @@ def type_text_xdotool(text, window_id=None):
         if result.returncode != 0:
             print("ERROR: Failed to copy to CLIPBOARD selection", file=sys.stderr)
             return False
+
+        # Step 1b: Also copy to PRIMARY selection for terminals
+        # Terminals often treat Shift+Insert as paste from PRIMARY, not CLIPBOARD
+        subprocess.run(
+            ['xclip', '-selection', 'primary', '-i'],
+            input=text.encode(),
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=5
+        )
 
         # Step 2: Activate target window if provided
         if window_id:
