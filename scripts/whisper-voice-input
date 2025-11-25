@@ -50,33 +50,19 @@ def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input
 
     try:
         # Use PulseAudio default source with maximum duration
-        # Choose audio format based on file extension
-        if output_file.endswith('.wav'):
-            # WAV format for GPT-4o Audio (native format, required by API)
-            cmd = [
-                'ffmpeg',
-                '-f', 'pulse',
-                '-i', 'default',
-                '-t', str(max_duration),
-                '-ar', '16000',
-                '-ac', '1',
-                '-y',  # Overwrite output file
-                output_file
-            ]
-        else:
-            # M4A/AAC format for Whisper (smaller file size, faster uploads)
-            cmd = [
-                'ffmpeg',
-                '-f', 'pulse',
-                '-i', 'default',
-                '-t', str(max_duration),
-                '-c:a', 'aac',
-                '-b:a', '64k',
-                '-ar', '16000',
-                '-ac', '1',
-                '-y',  # Overwrite output file
-                output_file
-            ]
+        # Record directly to M4A/AAC format (smaller file size than WAV)
+        cmd = [
+            'ffmpeg',
+            '-f', 'pulse',
+            '-i', 'default',
+            '-t', str(max_duration),
+            '-c:a', 'aac',
+            '-b:a', '64k',
+            '-ar', '16000',
+            '-ac', '1',
+            '-y',  # Overwrite output file
+            output_file
+        ]
 
         print(f"Recording (max {max_duration} seconds)...", file=sys.stderr)
         ffmpeg_process = subprocess.Popen(
@@ -163,143 +149,6 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
 
     except Exception as e:
         print(f"ERROR: OpenAI transcription failed: {e}", file=sys.stderr)
-        return None
-
-
-def clean_gpt4o_response(text):
-    """
-    Remove common unwanted patterns from GPT-4o response.
-    Sometimes GPT-4o adds explanatory text despite instructions.
-    """
-    import re
-
-    if not text:
-        return text
-
-    # Patterns to remove (case-insensitive)
-    patterns_to_remove = [
-        r'^The detected language is \w+\.\s*',
-        r'^The language is \w+\.\s*',
-        r'^Here is the transcription[^:]*:\s*',
-        r'^The audio says[^:]*:\s*',
-        r'^Transcription[^:]*:\s*',
-        r'^The text says[^:]*:\s*',
-    ]
-
-    for pattern in patterns_to_remove:
-        text = re.sub(pattern, '', text, flags=re.IGNORECASE | re.MULTILINE)
-
-    # Remove surrounding quotes if present
-    text = text.strip()
-    if len(text) >= 2:
-        if (text.startswith('"') and text.endswith('"')) or \
-           (text.startswith("'") and text.endswith("'")) or \
-           (text.startswith('"') and text.endswith('"')) or \
-           (text.startswith('«') and text.endswith('»')):
-            text = text[1:-1]
-
-    return text.strip()
-
-
-def transcribe_gpt4o_audio(audio_file, api_key, language="auto"):
-    """
-    Transcribe audio using OpenAI GPT-4o Audio model
-    This model provides better context understanding and emotion detection
-    """
-    if not api_key:
-        print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
-        return None
-
-    try:
-        import base64
-
-        url = "https://api.openai.com/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-
-        # Read and encode audio file to base64
-        with open(audio_file, 'rb') as f:
-            audio_data = f.read()
-            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-
-        # Prepare prompt based on language
-        # IMPORTANT: Must explicitly request ONLY the transcription text, no explanations
-        if language == "auto":
-            prompt = "Transcribe this audio. Output ONLY the exact spoken words, nothing else. No quotes, no explanations, no language labels."
-        else:
-            language_names = {
-                'ru': 'Russian',
-                'en': 'English',
-                'es': 'Spanish',
-                'de': 'German',
-                'fr': 'French',
-                'zh': 'Chinese',
-                'ja': 'Japanese'
-            }
-            lang_name = language_names.get(language, language)
-            prompt = f"Transcribe this audio in {lang_name}. Output ONLY the exact spoken words, nothing else. No quotes, no explanations."
-
-        # System message to enforce raw transcription output
-        system_prompt = (
-            "You are a speech-to-text transcription tool. "
-            "Your ONLY task is to output the exact words spoken in the audio. "
-            "NEVER add any commentary, explanations, language labels, or formatting. "
-            "NEVER use phrases like 'The audio says', 'Here is the transcription', "
-            "'The detected language is', etc. "
-            "NEVER wrap the text in quotes. "
-            "Output ONLY the raw transcribed text, nothing else."
-        )
-
-        data = {
-            "model": "gpt-4o-audio-preview",
-            "modalities": ["text"],
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "input_audio",
-                            "input_audio": {
-                                "data": audio_base64,
-                                "format": "wav"
-                            }
-                        },
-                        {
-                            "type": "text",
-                            "text": prompt
-                        }
-                    ]
-                }
-            ]
-        }
-
-        print("Sending to OpenAI GPT-4o Audio API...", file=sys.stderr)
-        response = requests.post(url, headers=headers, json=data, timeout=60)
-
-        if response.status_code == 200:
-            result = response.json()
-            # Extract text from chat completion response
-            if 'choices' in result and len(result['choices']) > 0:
-                message = result['choices'][0].get('message', {})
-                text = message.get('content', '').strip()
-                # Post-process to remove common unwanted patterns
-                text = clean_gpt4o_response(text)
-                return text
-            else:
-                print(f"ERROR: Unexpected response format: {result}", file=sys.stderr)
-                return None
-        else:
-            print(f"ERROR: OpenAI API error: {response.status_code} {response.text}", file=sys.stderr)
-            return None
-
-    except Exception as e:
-        print(f"ERROR: GPT-4o Audio transcription failed: {e}", file=sys.stderr)
         return None
 
 
@@ -569,12 +418,8 @@ def main():
     if not initial_window_id:
         print("WARNING: Could not get initial window ID, window tracking disabled", file=sys.stderr)
 
-    # Create temporary file for audio
-    # WAV for GPT-4o Audio (required by API), M4A for Whisper (smaller size)
-    if whisper_mode == 'openai' and openai_model == 'gpt-4o-audio-preview':
-        temp_audio = tempfile.mktemp(suffix='.wav', prefix='whisper-voice-')
-    else:
-        temp_audio = tempfile.mktemp(suffix='.m4a', prefix='whisper-voice-')
+    # Create temporary file for audio (M4A format for smaller size)
+    temp_audio = tempfile.mktemp(suffix='.m4a', prefix='whisper-voice-')
 
     try:
         # Task 5.5: Record audio with user control and maximum duration
@@ -593,13 +438,8 @@ def main():
 
         if whisper_mode == 'openai':
             api_key = os.environ.get('OPENAI_API_KEY', '')
-
-            # Route to appropriate transcription function based on model
-            if openai_model == 'gpt-4o-audio-preview':
-                text = transcribe_gpt4o_audio(temp_audio, api_key, language)
-            else:
-                # Default to whisper-1 or other whisper models
-                text = transcribe_openai(temp_audio, api_key, language, openai_model)
+            # Use transcribe_openai for all models (whisper-1, gpt-4o-transcribe, etc.)
+            text = transcribe_openai(temp_audio, api_key, language, openai_model)
 
         elif whisper_mode == 'local':
             server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
