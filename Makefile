@@ -1,7 +1,7 @@
-.PHONY: all clean install uninstall deb deb-install deb-clean help
+.PHONY: all clean install uninstall deb deb-install deb-clean deps-install help
 
 PACKAGE_NAME = voice-keyboard-perlover
-VERSION = 1.3.1
+VERSION = 1.3.2
 APPLET_UUID = voice-keyboard@perlover
 
 PREFIX ?= /usr
@@ -20,6 +20,7 @@ help:
 	@echo "  make uninstall     - Remove applet and script from system"
 	@echo "  make deb           - Build .deb package"
 	@echo "  make deb-install   - Build and install .deb with all dependencies (RECOMMENDED)"
+	@echo "  make deps-install  - Install build dependencies (debhelper, dpkg-dev, gjs)"
 	@echo "  make deb-clean     - Clean build artifacts"
 	@echo "  make clean         - Clean all generated files"
 	@echo "  make help          - Show this help message"
@@ -57,7 +58,19 @@ deb:
 	@echo "Or manually: sudo apt install ../$(PACKAGE_NAME)_$(VERSION)-1_all.deb"
 	@echo ""
 
-deb-install: deb
+deps-install:
+	@missing=""; \
+	command -v dpkg-buildpackage >/dev/null 2>&1 || missing="$$missing dpkg-dev"; \
+	command -v dh >/dev/null 2>&1 || missing="$$missing debhelper"; \
+	command -v gjs >/dev/null 2>&1 || missing="$$missing gjs"; \
+	if [ -n "$$missing" ]; then \
+		echo "Installing missing build dependencies:$$missing"; \
+		sudo apt-get install -y $$missing; \
+		echo "Build dependencies installed."; \
+		echo ""; \
+	fi
+
+deb-install: deps-install deb
 	@echo "Installing package with dependencies..."
 	@if [ ! -f ../$(PACKAGE_NAME)_$(VERSION)-1_all.deb ]; then \
 		echo "ERROR: Package file not found!"; \

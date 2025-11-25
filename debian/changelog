@@ -1,3 +1,14 @@
+voice-keyboard-perlover (1.3.2-1) noble; urgency=medium
+
+  * Fix GPT-4o Audio transcription error (use WAV format instead of M4A)
+  * GPT-4o Audio API requires WAV/MP3 format, M4A is not supported
+  * Whisper-1 still uses M4A for smaller file size and faster uploads
+  * Fix GPT-4o prompt to return only transcribed text without explanations
+  * Add system prompt and post-processing to clean GPT-4o responses
+  * Add deps-install target to Makefile for automatic build dependencies
+
+ -- perlover <perlover@perlover.com>  Mon, 25 Nov 2024 12:00:00 +0000
+
 voice-keyboard-perlover (1.3.1-1) noble; urgency=medium
 
   * Fix Shift+Insert paste in terminals (gnome-terminal, etc.)

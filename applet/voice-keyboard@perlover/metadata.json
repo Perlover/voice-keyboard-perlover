@@ -2,7 +2,7 @@
     "uuid": "voice-keyboard@perlover",
     "name": "Voice Keyboard",
     "description": "Voice input using Whisper (OpenAI or local server)",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "author": "perlover",
     "url": "https://github.com/perlover/voice-keyboard-perlover",
     "cinnamon-version": ["5.8", "6.0", "6.2", "6.4"],
