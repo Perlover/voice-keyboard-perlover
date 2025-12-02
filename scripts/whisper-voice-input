@@ -129,6 +129,10 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             "Authorization": f"Bearer {api_key}"
         }
 
+        # Check file size for debugging
+        file_size = os.path.getsize(audio_file)
+        print(f"Audio file size: {file_size} bytes", file=sys.stderr)
+
         with open(audio_file, 'rb') as f:
             files = {
                 'file': (os.path.basename(audio_file), f, 'audio/m4a'),
@@ -138,15 +142,32 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             if language != "auto":
                 files['language'] = (None, language)
 
-            response = requests.post(url, headers=headers, files=files, timeout=30)
+            print(f"Sending request to OpenAI API (model: {model})...", file=sys.stderr)
+            # Increase timeout to 120 seconds for larger audio files
+            response = requests.post(url, headers=headers, files=files, timeout=120)
 
         if response.status_code == 200:
             result = response.json()
             return result.get('text', '').strip()
+        elif response.status_code == 429:
+            print(f"ERROR: OpenAI API rate limit exceeded. Please wait and try again.", file=sys.stderr)
+            return None
+        elif response.status_code == 401:
+            print(f"ERROR: OpenAI API key is invalid or expired.", file=sys.stderr)
+            return None
+        elif response.status_code == 400:
+            print(f"ERROR: OpenAI API bad request: {response.text}", file=sys.stderr)
+            return None
         else:
             print(f"ERROR: OpenAI API error: {response.status_code} {response.text}", file=sys.stderr)
             return None
 
+    except requests.exceptions.Timeout:
+        print("ERROR: OpenAI API request timed out. Try a shorter recording.", file=sys.stderr)
+        return None
+    except requests.exceptions.ConnectionError:
+        print("ERROR: Cannot connect to OpenAI API. Check your internet connection.", file=sys.stderr)
+        return None
     except Exception as e:
         print(f"ERROR: OpenAI transcription failed: {e}", file=sys.stderr)
         return None
@@ -157,6 +178,10 @@ def transcribe_local(audio_file, server_url, language="auto"):
     Transcribe audio using local Whisper server (e.g., faster-whisper-server)
     """
     try:
+        # Check file size for debugging
+        file_size = os.path.getsize(audio_file)
+        print(f"Audio file size: {file_size} bytes", file=sys.stderr)
+
         with open(audio_file, 'rb') as f:
             files = {
                 'audio_file': (os.path.basename(audio_file), f, 'audio/m4a')
@@ -167,7 +192,8 @@ def transcribe_local(audio_file, server_url, language="auto"):
                 data['language'] = language
 
             print(f"Sending to local Whisper server at {server_url}...", file=sys.stderr)
-            response = requests.post(server_url, files=files, data=data, timeout=30)
+            # Increase timeout to 120 seconds for larger audio files
+            response = requests.post(server_url, files=files, data=data, timeout=120)
 
         if response.status_code == 200:
             result = response.json()
@@ -185,6 +211,9 @@ def transcribe_local(audio_file, server_url, language="auto"):
             print(f"ERROR: Local server error: {response.status_code} {response.text}", file=sys.stderr)
             return None
 
+    except requests.exceptions.Timeout:
+        print(f"ERROR: Local Whisper server request timed out. Try a shorter recording.", file=sys.stderr)
+        return None
     except requests.exceptions.ConnectionError:
         print(f"ERROR: Cannot connect to local Whisper server at {server_url}", file=sys.stderr)
         print("Make sure the server is running", file=sys.stderr)

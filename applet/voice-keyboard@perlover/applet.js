@@ -140,11 +140,17 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Fade out animation (100% to 30% opacity over 1 second)
      * Task 1.3: Add scale animation (100% to 70%)
+     * Fix: Use GLib.idle_add to prevent stack overflow from synchronous onComplete
      */
     _fadeOut: function() {
         if (this.currentState !== STATE_RECORDING) {
             return; // Stop animation if state changed
         }
+
+        // Remove any existing transitions to prevent conflicts
+        this.actor.remove_transition('opacity');
+        this.actor.remove_transition('scale_x');
+        this.actor.remove_transition('scale_y');
 
         // Task 1.3: Add scale_x: 0.7 and scale_y: 0.7 to the ease() call
         this.recordingAnimation = this.actor.ease({
@@ -153,18 +159,33 @@ VoiceKeyboardApplet.prototype = {
             scale_y: 0.7,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, this._fadeIn)
+            onComplete: Lang.bind(this, function() {
+                // Use idle_add to defer next animation to next event loop iteration
+                // This prevents stack overflow from synchronous onComplete calls
+                if (this.currentState === STATE_RECORDING) {
+                    GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
+                        this._fadeIn();
+                        return GLib.SOURCE_REMOVE;
+                    }));
+                }
+            })
         });
     },
 
     /**
      * Fade in animation (30% to 100% opacity over 1 second)
      * Task 1.4: Add scale animation (70% to 100%)
+     * Fix: Use GLib.idle_add to prevent stack overflow from synchronous onComplete
      */
     _fadeIn: function() {
         if (this.currentState !== STATE_RECORDING) {
             return; // Stop animation if state changed
         }
+
+        // Remove any existing transitions to prevent conflicts
+        this.actor.remove_transition('opacity');
+        this.actor.remove_transition('scale_x');
+        this.actor.remove_transition('scale_y');
 
         // Task 1.4: Add scale_x: 1.0 and scale_y: 1.0 to the ease() call
         this.recordingAnimation = this.actor.ease({
@@ -173,7 +194,16 @@ VoiceKeyboardApplet.prototype = {
             scale_y: 1.0,
             duration: 1000, // 1 second
             mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, this._fadeOut)
+            onComplete: Lang.bind(this, function() {
+                // Use idle_add to defer next animation to next event loop iteration
+                // This prevents stack overflow from synchronous onComplete calls
+                if (this.currentState === STATE_RECORDING) {
+                    GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
+                        this._fadeOut();
+                        return GLib.SOURCE_REMOVE;
+                    }));
+                }
+            })
         });
     },
 
