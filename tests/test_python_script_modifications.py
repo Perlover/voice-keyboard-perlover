@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Task 5.1: Tests for Python Script Modifications
-Test instant text insertion, window tracking, maximum duration, clipboard copy, and exit codes
+Test text pasting, window tracking, maximum duration, clipboard operations, and exit codes
 """
 
 import unittest
@@ -24,28 +24,26 @@ class TestPythonScriptModifications(unittest.TestCase):
         self.script_path = str(SCRIPT_PATH)
         self.env = os.environ.copy()
 
-    def test_instant_text_insertion_no_delays(self):
+    def test_paste_text_function(self):
         """
-        Task 5.2: Test that text insertion happens instantly without character delays
-        Verify that type_text() uses single xdotool command
+        Test that paste_text() function uses clipboard + Shift+Insert method
         """
-        # This is a unit test - we'll check the code structure
         with open(self.script_path, 'r') as f:
             script_content = f.read()
 
-        # Verify single xdotool command is used (not loop) - check for list format
-        self.assertIn("['xdotool', 'type', '--', text]", script_content)
+        # Verify paste_text function exists
+        self.assertIn("def paste_text(text, window_id=None):", script_content)
 
-        # Verify time.sleep is NOT in type_text function
-        # Find type_text function
-        type_text_start = script_content.find("def type_text(text):")
-        type_text_end = script_content.find("\ndef ", type_text_start + 1)
-        type_text_func = script_content[type_text_start:type_text_end]
+        # Verify it copies to clipboard
+        self.assertIn("'xclip', '-selection', 'clipboard', '-i'", script_content)
 
-        self.assertNotIn("time.sleep", type_text_func,
-                         "type_text() should not have any time.sleep delays")
+        # Verify it also copies to PRIMARY (for terminals)
+        self.assertIn("'xclip', '-selection', 'primary', '-i'", script_content)
 
-        print("PASS: Text insertion uses single xdotool command without delays")
+        # Verify Shift+Insert is used for pasting
+        self.assertIn("'xdotool', 'key', '--clearmodifiers', 'shift+Insert'", script_content)
+
+        print("PASS: paste_text uses clipboard + Shift+Insert method")
 
     def test_active_window_tracking_functions(self):
         """
@@ -62,29 +60,22 @@ class TestPythonScriptModifications(unittest.TestCase):
         # Verify initial window ID is captured
         self.assertIn("initial_window_id = get_active_window()", script_content)
 
-        # Verify current window ID is checked after transcription
-        self.assertIn("current_window_id = get_active_window()", script_content)
-
         print("PASS: Active window tracking functions are implemented")
 
-    def test_window_change_clipboard_copy(self):
+    def test_window_activation_before_paste(self):
         """
-        Task 5.4: Test that clipboard copy happens when window changes
-        Verify copy_to_clipboard() function exists and is called on window change
+        Test that window is activated before pasting text
         """
         with open(self.script_path, 'r') as f:
             script_content = f.read()
 
-        # Verify copy_to_clipboard function exists
-        self.assertIn("def copy_to_clipboard(text):", script_content)
-        self.assertIn("xclip", script_content)
+        # Verify window activation code exists in paste_text
+        self.assertIn("'xdotool', 'windowactivate', '--sync', window_id", script_content)
 
-        # Verify window change detection and clipboard copy logic
-        self.assertIn("if current_window_id and current_window_id != initial_window_id:", script_content)
-        self.assertIn("copy_to_clipboard(text)", script_content)
-        self.assertIn("WINDOW_CHANGED", script_content)
+        # Verify paste_text is called with initial_window_id
+        self.assertIn("paste_text(text, initial_window_id)", script_content)
 
-        print("PASS: Window change detection and clipboard copy are implemented")
+        print("PASS: Window activation before paste is implemented")
 
     def test_maximum_duration_handling(self):
         """
@@ -138,13 +129,6 @@ class TestPythonScriptModifications(unittest.TestCase):
         """
         Test that configuration errors return proper exit code
         """
-        # Test with missing OpenAI API key
-        env = self.env.copy()
-        env['WHISPER_MODE'] = 'openai'
-        env['OPENAI_API_KEY'] = ''
-
-        # Create a minimal test that just validates config
-        # We can't run the full script without valid config, but we can check the code
         with open(self.script_path, 'r') as f:
             script_content = f.read()
 
@@ -171,25 +155,24 @@ class TestPythonScriptModifications(unittest.TestCase):
 
         print("PASS: Recording function returns proper tuple")
 
-    def test_window_change_notification_format(self):
+    def test_no_paste_method_option(self):
         """
-        Test that window change outputs correct format to stdout
+        Test that PASTE_METHOD environment variable is not used anymore
+        Clipboard + Shift+Insert is the only method now
         """
         with open(self.script_path, 'r') as f:
             script_content = f.read()
 
-        # Verify WINDOW_CHANGED is printed to stdout
-        self.assertIn('print("WINDOW_CHANGED", file=sys.stdout)', script_content)
+        # Verify PASTE_METHOD is not used
+        self.assertNotIn("PASTE_METHOD", script_content)
 
-        # Verify text is printed on next line
-        window_changed_index = script_content.find('print("WINDOW_CHANGED", file=sys.stdout)')
-        self.assertTrue(window_changed_index > 0)
+        # Verify type_text_primary function is removed
+        self.assertNotIn("def type_text_primary(", script_content)
 
-        # Find the next print statement after WINDOW_CHANGED
-        next_print_index = script_content.find("print(text, file=sys.stdout)", window_changed_index)
-        self.assertTrue(next_print_index > 0)
+        # Verify old type_text with method parameter is removed
+        self.assertNotIn("def type_text(text, method=", script_content)
 
-        print("PASS: Window change notification format is correct")
+        print("PASS: Paste method option removed, only clipboard method remains")
 
 
 def run_tests():

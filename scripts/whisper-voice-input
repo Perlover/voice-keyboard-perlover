@@ -28,7 +28,6 @@ EXIT_RECORDING_ERROR = 2
 EXIT_TRANSCRIPTION_ERROR = 3
 EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
-EXIT_NEEDS_TYPING = 6  # Text ready, applet should type it (for xdotool method)
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.m4a"):
@@ -274,57 +273,9 @@ def copy_to_clipboard(text):
         return False
 
 
-def type_text_primary(text):
+def paste_text(text, window_id=None):
     """
-    Type text using PRIMARY selection + middle-click.
-    Fast method that works in most X11 apps including terminals.
-    Note: Requires mouse cursor to be in the target text input area.
-    """
-    if not text:
-        return False
-
-    try:
-        # Step 1: Copy text to PRIMARY selection using xclip
-        result = subprocess.run(
-            ['xclip', '-selection', 'primary', '-i'],
-            input=text.encode(),
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            timeout=5
-        )
-
-        if result.returncode != 0:
-            print("ERROR: Failed to copy to PRIMARY selection", file=sys.stderr)
-            return False
-
-        # Step 2: Simulate middle-click to paste
-        result = subprocess.run(
-            ['xdotool', 'click', '2'],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-
-        if result.returncode != 0:
-            print(f"ERROR: Failed to middle-click: {result.stderr}", file=sys.stderr)
-            return False
-
-        # Note: We do NOT clear PRIMARY selection after paste
-        # User may want to paste again with middle-click
-
-        return True
-
-    except FileNotFoundError:
-        print("ERROR: xclip is not installed", file=sys.stderr)
-        return False
-    except Exception as e:
-        print(f"ERROR: PRIMARY paste failed: {e}", file=sys.stderr)
-        return False
-
-
-def type_text_xdotool(text, window_id=None):
-    """
-    Type text using CLIPBOARD + PRIMARY + Shift+Insert.
+    Paste text using CLIPBOARD + PRIMARY + Shift+Insert.
     Fast method that works in most apps including terminals.
 
     We copy to both selections because:
@@ -334,6 +285,9 @@ def type_text_xdotool(text, window_id=None):
     Args:
         text: Text to paste
         window_id: Optional window ID to focus before pasting
+
+    Returns:
+        True on success, False on failure
     """
     if not text:
         return False
@@ -400,32 +354,12 @@ def type_text_xdotool(text, window_id=None):
         return False
 
 
-def type_text(text, method='primary', window_id=None):
-    """
-    Type text into the active window using specified method.
-
-    Methods:
-    - 'primary': Use PRIMARY selection + middle-click (fast, works in terminals)
-    - 'xdotool': Use CLIPBOARD + Shift+Insert (fast, works everywhere)
-
-    Args:
-        text: Text to paste
-        method: Paste method ('primary' or 'xdotool')
-        window_id: Window ID to focus before pasting (used with 'xdotool' method)
-    """
-    if method == 'xdotool':
-        return type_text_xdotool(text, window_id)
-    else:
-        return type_text_primary(text)
-
-
 def main():
     # Get configuration from environment variables
     whisper_mode = os.environ.get('WHISPER_MODE', 'openai').lower()
     language = os.environ.get('WHISPER_LANGUAGE', 'auto')
     max_duration = int(os.environ.get('RECORDING_DURATION', '300'))
     openai_model = os.environ.get('OPENAI_MODEL', 'whisper-1')
-    paste_method = os.environ.get('PASTE_METHOD', 'primary').lower()
 
     # Validate configuration
     if whisper_mode == 'openai':
@@ -481,14 +415,9 @@ def main():
         # Step 3: Paste text to original window
         print(f"Recognized: {text}", file=sys.stderr)
 
-        # Note: We always paste to initial window, even if user switched windows
-        # The xdotool method will activate the original window before pasting
-
-        print(f"Using paste method: {paste_method}", file=sys.stderr)
-
-        # Paste text using selected method
-        # For xdotool method, pass initial_window_id to restore focus
-        if type_text(text, paste_method, initial_window_id):
+        # Paste text using clipboard + Shift+Insert method
+        # This activates the original window before pasting
+        if paste_text(text, initial_window_id):
             # Output the recognized text to stdout (for the applet)
             print(text, file=sys.stdout)
 

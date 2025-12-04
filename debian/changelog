@@ -1,3 +1,16 @@
+voice-keyboard-perlover (1.4.0-1) noble; urgency=medium
+
+  * Simplify paste method: remove option, use only Clipboard + Shift+Insert
+  * Remove PRIMARY selection middle-click paste method (~180 lines of code)
+  * Remove STATE_TYPING state and related UI code from applet
+  * Remove paste-method setting from settings schema
+  * Fix potential compositor conflicts during workspace switching
+  * Change animation priority from HIGH to DEFAULT to avoid conflicts with Expo
+  * Remove queue_redraw() call - Clutter handles redraws automatically
+  * Fix St-CRITICAL cr_parser errors by using null instead of empty style
+
+ -- perlover <perlover@perlover.com>  Wed, 04 Dec 2024 14:00:00 +0100
+
 voice-keyboard-perlover (1.3.3-1) noble; urgency=medium
 
   * Replace gpt-4o-audio-preview with gpt-4o-transcribe model

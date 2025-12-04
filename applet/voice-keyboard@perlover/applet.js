@@ -15,7 +15,6 @@ const Mainloop = imports.mainloop;
 const STATE_IDLE = 'STATE_IDLE';
 const STATE_RECORDING = 'STATE_RECORDING';
 const STATE_PROCESSING = 'STATE_PROCESSING';
-const STATE_TYPING = 'STATE_TYPING';
 const STATE_ERROR = 'STATE_ERROR';
 
 // Exit codes from Python script
@@ -25,7 +24,6 @@ const EXIT_RECORDING_ERROR = 2;
 const EXIT_TRANSCRIPTION_ERROR = 3;
 const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
-const EXIT_NEEDS_TYPING = 6;  // Text ready, applet should type it
 
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
@@ -55,15 +53,7 @@ VoiceKeyboardApplet.prototype = {
         this.settings.bind("local-url", "localUrl");
         this.settings.bind("language", "language");
         this.settings.bind("recording-duration", "recordingDuration");
-        this.settings.bind("paste-method", "pasteMethod");
         this.settings.bind("script-path", "scriptPath");
-
-        // Migration v1.3.0: Force xdotool method for better reliability
-        // Middle-click has issues when mouse cursor is not in text input area
-        if (this.pasteMethod === 'primary') {
-            this.settings.setValue("paste-method", "xdotool");
-            this.pasteMethod = "xdotool";
-        }
 
         // Set icon
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
@@ -344,25 +334,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Show typing icon (keyboard) for STATE_TYPING
-     * Used when xdotool type method is selected
-     */
-    showTypingIcon: function() {
-        // Use input-keyboard-symbolic for typing state
-        this.set_applet_icon_symbolic_name("input-keyboard-symbolic");
-        this.actor.opacity = 255;
-        this.actor.scale_x = 1.0;
-        this.actor.scale_y = 1.0;
-
-        // Reset icon style
-        // Use null instead of empty string to avoid St-CRITICAL cr_parser errors
-        let iconChild = this.actor.get_first_child();
-        if (iconChild && iconChild.set_style) {
-            iconChild.set_style(null);
-        }
-    },
-
-    /**
      * Task 4.4: Implement showErrorIcon() function
      * Replace microphone icon with red warning triangle
      */
@@ -495,9 +466,6 @@ VoiceKeyboardApplet.prototype = {
             case STATE_PROCESSING:
                 this.startProcessingAnimation();
                 break;
-            case STATE_TYPING:
-                this.showTypingIcon();
-                break;
             case STATE_ERROR:
                 this.showErrorIcon();
                 break;
@@ -535,11 +503,6 @@ VoiceKeyboardApplet.prototype = {
                 this.cancelTranscription();
                 break;
 
-            case STATE_TYPING:
-                // Cancel typing and return to idle
-                this.cancelTranscription();
-                break;
-
             case STATE_ERROR:
                 // Show error dialog
                 this.showErrorDialog();
@@ -570,7 +533,6 @@ VoiceKeyboardApplet.prototype = {
         envp.push('WHISPER_MODE=' + this.whisperMode);
         envp.push('WHISPER_LANGUAGE=' + this.language);
         envp.push('RECORDING_DURATION=' + this.recordingDuration);
-        envp.push('PASTE_METHOD=' + (this.pasteMethod || 'primary'));
 
         if (this.whisperMode === 'openai') {
             envp.push('OPENAI_API_KEY=' + this.openaiApiKey);
@@ -682,50 +644,6 @@ VoiceKeyboardApplet.prototype = {
             this.errorMessage = "Failed to start voice input: " + e.message;
             this.setState(STATE_ERROR);
         }
-    },
-
-    /**
-     * Type text using xdotool in STATE_TYPING state
-     * Shows keyboard icon while typing
-     */
-    _typeTextWithXdotool: function(text) {
-        // Transition to TYPING state (shows keyboard icon)
-        this.setState(STATE_TYPING);
-
-        // Use idle_add to defer xdotool start to next event loop iteration
-        // This allows the icon to render before xdotool blocks X11 event loop
-        GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
-            // Launch xdotool type as separate process
-            try {
-                let [success, pid] = GLib.spawn_async(
-                    null,
-                    ['xdotool', 'type', '--clearmodifiers', '--delay', '0', '--', text],
-                    null,
-                    GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-                    null
-                );
-
-                if (success) {
-                    this.recordingProcess = { pid: pid };
-
-                    // Watch for xdotool completion
-                    GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
-                        GLib.spawn_close_pid(pid);
-                        this.recordingProcess = null;
-
-                        // Return to IDLE after typing completes
-                        this.setState(STATE_IDLE);
-                    }));
-                } else {
-                    this.setState(STATE_IDLE);
-                }
-            } catch (e) {
-                global.logError("[voice-keyboard] xdotool error: " + e);
-                this.setState(STATE_IDLE);
-            }
-
-            return GLib.SOURCE_REMOVE;
-        }));
     },
 
     /**
