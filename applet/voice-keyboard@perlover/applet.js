@@ -119,9 +119,10 @@ VoiceKeyboardApplet.prototype = {
         this.errorMessage = null;
 
         // Reset icon style (remove red color from error state)
+        // Use null instead of empty string to avoid St-CRITICAL cr_parser errors
         let iconChild = this.actor.get_first_child();
         if (iconChild && iconChild.set_style) {
-            iconChild.set_style('');
+            iconChild.set_style(null);
         }
     },
 
@@ -264,9 +265,9 @@ VoiceKeyboardApplet.prototype = {
         this._animStep = 0;
         this._lastLogTime = 0;
 
-        // Start animation loop with GLib.timeout_add at HIGH priority
-        // Using GLib directly instead of Mainloop for more control
-        this._processingTimeoutId = GLib.timeout_add(GLib.PRIORITY_HIGH, 100, Lang.bind(this, this._animateProcessingStep));
+        // Start animation loop with GLib.timeout_add at DEFAULT priority
+        // Using DEFAULT instead of HIGH to avoid conflicts with Expo/Scale workspace animations
+        this._processingTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, Lang.bind(this, this._animateProcessingStep));
     },
 
     /**
@@ -299,8 +300,9 @@ VoiceKeyboardApplet.prototype = {
             this.actor.scale_x = scale;
             this.actor.scale_y = scale;
 
-            // Force redraw to prevent compositor from freezing animation
-            this.actor.queue_redraw();
+            // Note: removed queue_redraw() - Clutter handles redraws automatically
+            // when opacity/scale properties change. Forcing redraw with HIGH priority
+            // could conflict with Expo/Scale workspace switcher animations.
 
             // Advance step
             this._animStep = (this._animStep + 1) % 40;
@@ -353,9 +355,10 @@ VoiceKeyboardApplet.prototype = {
         this.actor.scale_y = 1.0;
 
         // Reset icon style
+        // Use null instead of empty string to avoid St-CRITICAL cr_parser errors
         let iconChild = this.actor.get_first_child();
         if (iconChild && iconChild.set_style) {
-            iconChild.set_style('');
+            iconChild.set_style(null);
         }
     },
 
