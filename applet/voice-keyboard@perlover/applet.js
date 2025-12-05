@@ -98,14 +98,11 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Task 3.2: Implement setIdleIcon() function
      * Set IDLE state icon and clear any animations/errors
-     * Task 3.2 (Animation Enhancement): Reset scale properties to 1.0
+     * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
     setIdleIcon: function() {
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
         this.actor.opacity = 255;
-        // Task 3.2: Reset scale properties to 1.0
-        this.actor.scale_x = 1.0;
-        this.actor.scale_y = 1.0;
         this.errorMessage = null;
 
         // Reset icon style (remove red color from error state)
@@ -117,105 +114,70 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 3.3: Implement startRecordingAnimation() function
-     * Start smooth fade animation for RECORDING state
-     * Task 1.2: Set pivot_point for center-based scaling
+     * Start recording animation using GLib.timeout_add
+     * This is GC-safe unlike this.actor.ease() which can crash during GC sweep
      */
     startRecordingAnimation: function() {
-        // Task 1.2: Set pivot_point for center-based scaling
-        this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
-        // Start fade out animation
-        this._fadeOut();
+        // Animation state: 0-19 = fade out, 20-39 = fade in (50ms * 40 = 2 sec cycle)
+        this._recordingAnimStep = 0;
+
+        // Mark animation as active
+        this.recordingAnimation = true;
+
+        // Start animation loop with GLib.timeout_add at DEFAULT priority
+        this._recordingTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 50, Lang.bind(this, this._animateRecordingStep));
     },
 
     /**
-     * Fade out animation (100% to 30% opacity over 1 second)
-     * Task 1.3: Add scale animation (100% to 70%)
-     * Fix: Use GLib.idle_add to prevent stack overflow from synchronous onComplete
+     * Single recording animation step - called every 50ms
+     * Returns GLib.SOURCE_CONTINUE to keep running
+     * GC-safe implementation using timeout instead of ease()
      */
-    _fadeOut: function() {
-        if (this.currentState !== STATE_RECORDING) {
-            return; // Stop animation if state changed
+    _animateRecordingStep: function() {
+        try {
+            // Check if still in recording state
+            if (this.currentState !== STATE_RECORDING) {
+                this._recordingTimeoutId = null;
+                return GLib.SOURCE_REMOVE;
+            }
+
+            // Calculate opacity based on step (0-39)
+            // 40 steps * 50ms = 2 second full cycle
+            let opacity;
+            if (this._recordingAnimStep < 20) {
+                // Fade out: steps 0-19
+                let t = this._recordingAnimStep / 20.0; // 0 to 1
+                opacity = 255 - (178 * t); // 255 to 77
+            } else {
+                // Fade in: steps 20-39
+                let t = (this._recordingAnimStep - 20) / 20.0; // 0 to 1
+                opacity = 77 + (178 * t);  // 77 to 255
+            }
+
+            this.actor.opacity = Math.round(opacity);
+
+            // Advance step
+            this._recordingAnimStep = (this._recordingAnimStep + 1) % 40;
+
+            return GLib.SOURCE_CONTINUE;
+        } catch (e) {
+            global.logError("[voice-keyboard] Recording animation error: " + e);
+            return GLib.SOURCE_REMOVE;
         }
-
-        // Remove any existing transitions to prevent conflicts
-        this.actor.remove_transition('opacity');
-        this.actor.remove_transition('scale_x');
-        this.actor.remove_transition('scale_y');
-
-        // Task 1.3: Add scale_x: 0.7 and scale_y: 0.7 to the ease() call
-        this.recordingAnimation = this.actor.ease({
-            opacity: 77, // 30% of 255
-            scale_x: 0.7,
-            scale_y: 0.7,
-            duration: 1000, // 1 second
-            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, function() {
-                // Use idle_add to defer next animation to next event loop iteration
-                // This prevents stack overflow from synchronous onComplete calls
-                if (this.currentState === STATE_RECORDING) {
-                    GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
-                        this._fadeIn();
-                        return GLib.SOURCE_REMOVE;
-                    }));
-                }
-            })
-        });
     },
 
     /**
-     * Fade in animation (30% to 100% opacity over 1 second)
-     * Task 1.4: Add scale animation (70% to 100%)
-     * Fix: Use GLib.idle_add to prevent stack overflow from synchronous onComplete
-     */
-    _fadeIn: function() {
-        if (this.currentState !== STATE_RECORDING) {
-            return; // Stop animation if state changed
-        }
-
-        // Remove any existing transitions to prevent conflicts
-        this.actor.remove_transition('opacity');
-        this.actor.remove_transition('scale_x');
-        this.actor.remove_transition('scale_y');
-
-        // Task 1.4: Add scale_x: 1.0 and scale_y: 1.0 to the ease() call
-        this.recordingAnimation = this.actor.ease({
-            opacity: 255, // 100%
-            scale_x: 1.0,
-            scale_y: 1.0,
-            duration: 1000, // 1 second
-            mode: Clutter.AnimationMode.EASE_IN_OUT_QUAD,
-            onComplete: Lang.bind(this, function() {
-                // Use idle_add to defer next animation to next event loop iteration
-                // This prevents stack overflow from synchronous onComplete calls
-                if (this.currentState === STATE_RECORDING) {
-                    GLib.idle_add(GLib.PRIORITY_DEFAULT, Lang.bind(this, function() {
-                        this._fadeOut();
-                        return GLib.SOURCE_REMOVE;
-                    }));
-                }
-            })
-        });
-    },
-
-    /**
-     * Task 3.4: Stop recording animation and clean up
-     * Task 1.5: Also remove scale_x and scale_y transitions and reset to 1.0
+     * Stop recording animation and clean up timeout
+     * GC-safe cleanup using GLib.source_remove
      */
     stopRecordingAnimation: function() {
-        if (this.recordingAnimation) {
-            // Remove the animation transitions
-            this.actor.remove_transition('opacity');
-            // Task 1.5: Remove scale transitions
-            this.actor.remove_transition('scale_x');
-            this.actor.remove_transition('scale_y');
-            this.recordingAnimation = null;
-            // Reset opacity to full
-            this.actor.opacity = 255;
-            // Task 1.5: Reset scale to 1.0
-            this.actor.scale_x = 1.0;
-            this.actor.scale_y = 1.0;
+        if (this._recordingTimeoutId) {
+            GLib.source_remove(this._recordingTimeoutId);
+            this._recordingTimeoutId = null;
         }
+        this.recordingAnimation = null;
+        // Reset opacity to full
+        this.actor.opacity = 255;
     },
 
     /**
@@ -241,15 +203,13 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Task 2.3: Processing animation using Mainloop.timeout_add
      * Simple step-based animation with 100ms intervals
+     * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
     _startProcessingTimeline: function() {
         // Check if still in processing state
         if (this.currentState !== STATE_PROCESSING) {
             return;
         }
-
-        // Set pivot_point for center-based scaling
-        this.actor.pivot_point = new Clutter.Point({ x: 0.5, y: 0.5 });
 
         // Animation state: 0-19 = fade out, 20-39 = fade in (100ms * 40 = 4 sec cycle)
         this._animStep = 0;
@@ -263,6 +223,7 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Single animation step - called every 100ms
      * Returns GLib.SOURCE_CONTINUE to keep running
+     * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
     _animateProcessingStep: function() {
         try {
@@ -272,27 +233,20 @@ VoiceKeyboardApplet.prototype = {
                 return GLib.SOURCE_REMOVE;
             }
 
-            // Calculate opacity and scale based on step (0-39)
-            let opacity, scale;
+            // Calculate opacity based on step (0-39)
+            // Opacity-only animation to prevent layout thrashing
+            let opacity;
             if (this._animStep < 20) {
                 // Fade out: steps 0-19
                 let t = this._animStep / 20.0; // 0 to 1
                 opacity = 255 - (178 * t); // 255 to 77
-                scale = 1.0 - (0.3 * t);   // 1.0 to 0.7
             } else {
                 // Fade in: steps 20-39
                 let t = (this._animStep - 20) / 20.0; // 0 to 1
                 opacity = 77 + (178 * t);  // 77 to 255
-                scale = 0.7 + (0.3 * t);   // 0.7 to 1.0
             }
 
             this.actor.opacity = Math.round(opacity);
-            this.actor.scale_x = scale;
-            this.actor.scale_y = scale;
-
-            // Note: removed queue_redraw() - Clutter handles redraws automatically
-            // when opacity/scale properties change. Forcing redraw with HIGH priority
-            // could conflict with Expo/Scale workspace switcher animations.
 
             // Advance step
             this._animStep = (this._animStep + 1) % 40;
@@ -315,27 +269,21 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 4.7: Clean up loading dots animation
-     * Task 2.6: Update to clean up timeline and reset scale
+     * Clean up processing animation
+     * GC-safe - only uses GLib.source_remove, no ease() transitions
      */
     _cleanupLoadingDots: function() {
         // Stop timeline if running
         this._stopProcessingTimeline();
 
-        // Task 2.6: Remove any active ease animations on actor
-        this.actor.remove_transition('opacity');
-        this.actor.remove_transition('scale_x');
-        this.actor.remove_transition('scale_y');
-
-        // Task 2.6: Reset opacity and scale to defaults
+        // Reset opacity to default
         this.actor.opacity = 255;
-        this.actor.scale_x = 1.0;
-        this.actor.scale_y = 1.0;
     },
 
     /**
      * Task 4.4: Implement showErrorIcon() function
      * Replace microphone icon with red warning triangle
+     * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
     showErrorIcon: function() {
         // Remove any existing error overlay (cleanup from previous errors)
@@ -348,8 +296,6 @@ VoiceKeyboardApplet.prototype = {
         // Replace microphone icon with red warning triangle
         this.set_applet_icon_symbolic_name("dialog-warning-symbolic");
         this.actor.opacity = 255;
-        this.actor.scale_x = 1.0;
-        this.actor.scale_y = 1.0;
 
         // Apply red color to the icon using style
         let iconChild = this.actor.get_first_child();

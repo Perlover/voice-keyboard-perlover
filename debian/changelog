@@ -1,3 +1,16 @@
+voice-keyboard-perlover (1.5.0-1) noble; urgency=medium
+
+  * Fix system freezes caused by Hot Corner conflicts during voice recording
+  * Remove scale animations (scale_x, scale_y) that triggered layout thrashing
+  * Replace this.actor.ease() with GLib.timeout_add for GC-safe animations
+  * Remove _fadeIn/_fadeOut methods that created ClutterPropertyTransition objects
+  * New _animateRecordingStep() using simple timeout-based opacity changes
+  * Animations now only use opacity (255↔77) without size changes
+  * Prevents "Attempting to call back into JSAPI during GC sweep" errors
+  * Code simplified: -113 lines removed, +59 lines added
+
+ -- perlover <perlover@perlover.com>  Fri, 05 Dec 2025 12:51:00 +0100
+
 voice-keyboard-perlover (1.4.0-1) noble; urgency=medium
 
   * Simplify paste method: remove option, use only Clipboard + Shift+Insert
