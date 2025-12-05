@@ -62,32 +62,37 @@ tail -f ~/.xsession-errors
 
 ### State Machine (applet.js)
 
-The applet uses a 5-state finite state machine:
+The applet uses a 4-state finite state machine:
 
 ```
 STATE_IDLE → STATE_RECORDING → STATE_PROCESSING → STATE_IDLE
-                                      ↓
-                                STATE_TYPING → STATE_IDLE (xdotool paste method)
                                       ↓
                                 STATE_ERROR
 ```
 
 Key state transitions:
-- Left-click in IDLE: validates config, starts recording
-- Left-click in RECORDING: stops recording, starts transcription
-- Left-click in PROCESSING/TYPING: cancels operation
-- Left-click in ERROR: shows error dialog
+- Left-click in IDLE: validates config, starts recording via Python script
+- Left-click in RECORDING: sends SIGTERM to stop recording, triggers transcription
+- Left-click in PROCESSING: cancels transcription
+- Left-click in ERROR: shows error dialog with details
+
+### Communication Flow
+
+1. Applet spawns Python script with environment variables (config)
+2. Script records via ffmpeg until SIGTERM or max duration
+3. Script transcribes via OpenAI API or local server
+4. Script pastes text using xclip + xdotool (CLIPBOARD + PRIMARY + Shift+Insert)
+5. Script exits with status code, applet handles result
 
 ### Python Script Exit Codes
 
 The script communicates results via exit codes:
-- `0` - Success (text pasted via PRIMARY selection)
+- `0` - Success (text pasted via clipboard)
 - `1` - Configuration error
 - `2` - Recording error (ffmpeg)
 - `3` - Transcription error (API)
 - `4` - Cancelled by user
-- `5` - Timeout reached
-- `6` - Text ready, applet should type via xdotool (stdout contains text)
+- `5` - Timeout reached (max duration)
 
 ### Settings Schema
 
@@ -108,8 +113,8 @@ Use `"dependency": "whisper-mode=openai"` to conditionally show/hide settings.
 4. **Preserve `this` context** - Always use `Lang.bind()` for callbacks
 5. **Use symbolic icons** - e.g., `audio-input-microphone-symbolic`
 6. **Process spawning** - Use `GLib.spawn_async_with_pipes()` with `GLib.child_watch_add()`
-7. **Animation cleanup** - Always call `this.actor.remove_transition()` before state changes
-8. **Idle callbacks** - Use `GLib.idle_add()` to defer work to next event loop iteration
+7. **No scale animations** - Avoid `this.actor.ease()` with scale transforms; causes Cinnamon HotCorner/Expo layout conflicts
+8. **GC-safe animations** - Use `GLib.timeout_add()` instead of `this.actor.ease()` to prevent crashes during garbage collection
 
 Example async process pattern:
 ```javascript
@@ -129,7 +134,8 @@ GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, s
 - Python 3 only with minimal dependencies (stdlib + requests)
 - Uses ffmpeg with `-f pulse` for audio (works with PulseAudio and PipeWire)
 - Audio format: M4A/AAC at 16kHz mono for fast API uploads
-- Environment variables for config: `WHISPER_MODE`, `OPENAI_API_KEY`, `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `PASTE_METHOD`
+- Text pasting: xclip to both CLIPBOARD and PRIMARY selections, then xdotool Shift+Insert
+- Environment variables for config: `WHISPER_MODE`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`
 
 ## Version Updates
 
