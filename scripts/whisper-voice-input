@@ -142,8 +142,11 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
                 files['language'] = (None, language)
 
             print(f"Sending request to OpenAI API (model: {model})...", file=sys.stderr)
-            # Increase timeout to 120 seconds for larger audio files
-            response = requests.post(url, headers=headers, files=files, timeout=120)
+            start_time = time.time()
+            # Timeout: 10 sec for connection, 30 sec for server response
+            response = requests.post(url, headers=headers, files=files, timeout=(10, 30))
+            elapsed = time.time() - start_time
+            print(f"OpenAI response received in {elapsed:.1f}s", file=sys.stderr)
 
         if response.status_code == 200:
             result = response.json()
@@ -162,7 +165,7 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             return None
 
     except requests.exceptions.Timeout:
-        print("ERROR: OpenAI API request timed out. Try a shorter recording.", file=sys.stderr)
+        print("ERROR: OpenAI server did not respond in time (30 sec limit). The server may be overloaded.", file=sys.stderr)
         return None
     except requests.exceptions.ConnectionError:
         print("ERROR: Cannot connect to OpenAI API. Check your internet connection.", file=sys.stderr)
@@ -191,8 +194,11 @@ def transcribe_local(audio_file, server_url, language="auto"):
                 data['language'] = language
 
             print(f"Sending to local Whisper server at {server_url}...", file=sys.stderr)
-            # Increase timeout to 120 seconds for larger audio files
-            response = requests.post(server_url, files=files, data=data, timeout=120)
+            start_time = time.time()
+            # Timeout: 10 sec for connection, 30 sec for server response
+            response = requests.post(server_url, files=files, data=data, timeout=(10, 30))
+            elapsed = time.time() - start_time
+            print(f"Local server response received in {elapsed:.1f}s", file=sys.stderr)
 
         if response.status_code == 200:
             result = response.json()
@@ -211,7 +217,7 @@ def transcribe_local(audio_file, server_url, language="auto"):
             return None
 
     except requests.exceptions.Timeout:
-        print(f"ERROR: Local Whisper server request timed out. Try a shorter recording.", file=sys.stderr)
+        print(f"ERROR: Local Whisper server did not respond in time (30 sec limit).", file=sys.stderr)
         return None
     except requests.exceptions.ConnectionError:
         print(f"ERROR: Cannot connect to local Whisper server at {server_url}", file=sys.stderr)

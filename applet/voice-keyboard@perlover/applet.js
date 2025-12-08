@@ -25,6 +25,10 @@ const EXIT_TRANSCRIPTION_ERROR = 3;
 const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
 
+// Watchdog timeout for STATE_PROCESSING (60 seconds)
+// This is a safety net in case Python script hangs
+const PROCESSING_WATCHDOG_MS = 60000;
+
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
 }
@@ -276,6 +280,9 @@ VoiceKeyboardApplet.prototype = {
         // Stop timeline if running
         this._stopProcessingTimeline();
 
+        // Clear watchdog timer
+        this._clearProcessingWatchdog();
+
         // Reset opacity to default
         this.actor.opacity = 255;
     },
@@ -355,6 +362,9 @@ VoiceKeyboardApplet.prototype = {
      * Kill Python process and transition to IDLE state silently
      */
     cancelTranscription: function() {
+        // Clear watchdog timer
+        this._clearProcessingWatchdog();
+
         // Kill the Python process if it's still running
         if (this.recordingProcess && this.recordingProcess.pid) {
             try {
@@ -507,6 +517,9 @@ VoiceKeyboardApplet.prototype = {
 
                 // Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
+                    // Clear watchdog timer - process completed normally
+                    this._clearProcessingWatchdog();
+
                     // Read stdout before closing
                     let outputText = '';
                     try {
@@ -613,8 +626,42 @@ VoiceKeyboardApplet.prototype = {
             }
         }
 
+        // Start watchdog timer to prevent infinite hang if server doesn't respond
+        this._startProcessingWatchdog();
+
         // The recording process continues running for transcription
         // Process will be monitored via child_watch_add callback
+    },
+
+    /**
+     * Start watchdog timer for STATE_PROCESSING
+     * Automatically cancels transcription if it takes too long
+     */
+    _startProcessingWatchdog: function() {
+        // Clear any existing watchdog
+        this._clearProcessingWatchdog();
+
+        this._processingWatchdogId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROCESSING_WATCHDOG_MS,
+            Lang.bind(this, function() {
+                if (this.currentState === STATE_PROCESSING) {
+                    global.logError("[voice-keyboard] Processing watchdog timeout - server did not respond");
+                    this.cancelTranscription();
+                    Main.notify("Voice Keyboard Perlover", "Server did not respond in time");
+                }
+                this._processingWatchdogId = null;
+                return GLib.SOURCE_REMOVE;
+            })
+        );
+    },
+
+    /**
+     * Clear watchdog timer
+     */
+    _clearProcessingWatchdog: function() {
+        if (this._processingWatchdogId) {
+            GLib.source_remove(this._processingWatchdogId);
+            this._processingWatchdogId = null;
+        }
     },
 
     /**

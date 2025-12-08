@@ -1,3 +1,13 @@
+voice-keyboard-perlover (1.5.1-1) noble; urgency=medium
+
+  * Fix transcription hanging when OpenAI API does not respond
+  * Add watchdog timer (60s) to automatically cancel stuck processing
+  * Change API timeout from 120s to (10s connect, 30s read)
+  * Improve timeout error messages for better user feedback
+  * Add request timing logs for diagnostics
+
+ -- perlover <perlover@perlover.com>  Sun, 08 Dec 2025 19:00:00 +0100
+
 voice-keyboard-perlover (1.5.0-1) noble; urgency=medium
 
   * Fix system freezes caused by Hot Corner conflicts during voice recording
