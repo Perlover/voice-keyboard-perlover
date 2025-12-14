@@ -552,11 +552,6 @@ VoiceKeyboardApplet.prototype = {
                         // Success - text was pasted via PRIMARY method
                         this.setState(STATE_IDLE);
 
-                    } else if (exitCode === EXIT_NEEDS_TYPING) {
-                        // Legacy: In v1.3.0+ xdotool method is handled in Python script
-                        // This code path should not be reached anymore
-                        this.setState(STATE_IDLE);
-
                     } else if (exitCode === EXIT_TIMEOUT) {
                         Main.notify(
                             "Voice Keyboard Perlover",
