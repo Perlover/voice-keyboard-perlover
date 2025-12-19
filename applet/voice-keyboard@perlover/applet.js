@@ -43,6 +43,12 @@ VoiceKeyboardApplet.prototype = {
         this.metadata = metadata;
         this.settings = new Settings.AppletSettings(this, metadata.uuid, instance_id);
 
+        // Debug mode: enabled if ~/.voice-keyboard-debug file exists
+        this._debugMode = GLib.file_test(
+            GLib.get_home_dir() + '/.voice-keyboard-debug',
+            GLib.FileTest.EXISTS
+        );
+
         // Initialize state machine
         this.currentState = STATE_IDLE;
         this.recordingAnimation = null;
@@ -85,6 +91,15 @@ VoiceKeyboardApplet.prototype = {
 
         // Connect button press event handler for right-click menu
         this.actor.connect('button-press-event', Lang.bind(this, this._onButtonPressEvent));
+    },
+
+    /**
+     * Debug logging - only outputs if ~/.voice-keyboard-debug file exists
+     */
+    _debug: function(message) {
+        if (this._debugMode) {
+            global.log("[voice-keyboard] " + message);
+        }
     },
 
     /**
@@ -522,7 +537,7 @@ VoiceKeyboardApplet.prototype = {
 
                 // Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
-                    global.log("[voice-keyboard] child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState);
+                    this._debug("child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState);
                     // Clear watchdog timer - process completed normally
                     this._clearProcessingWatchdog();
 
@@ -611,7 +626,7 @@ VoiceKeyboardApplet.prototype = {
      * Stop recording and transition to processing state
      */
     stopRecording: function() {
-        global.log("[voice-keyboard] stopRecording() called, pid=" + (this.recordingProcess ? this.recordingProcess.pid : "null"));
+        this._debug("stopRecording() called, pid=" + (this.recordingProcess ? this.recordingProcess.pid : "null"));
 
         // Transition to PROCESSING state
         this.setState(STATE_PROCESSING);
@@ -623,7 +638,7 @@ VoiceKeyboardApplet.prototype = {
             try {
                 // Send SIGTERM to the process to stop recording
                 // The Python script should handle this gracefully and proceed to transcription
-                global.log("[voice-keyboard] Sending SIGTERM to pid " + this.recordingProcess.pid);
+                this._debug("Sending SIGTERM to pid " + this.recordingProcess.pid);
                 GLib.spawn_command_line_sync('kill -TERM ' + this.recordingProcess.pid);
             } catch (e) {
                 global.logError("Error stopping recording: " + e);
@@ -631,9 +646,9 @@ VoiceKeyboardApplet.prototype = {
         }
 
         // Start watchdog timer to prevent infinite hang if server doesn't respond
-        global.log("[voice-keyboard] About to start watchdog timer");
+        this._debug("About to start watchdog timer");
         this._startProcessingWatchdog();
-        global.log("[voice-keyboard] stopRecording() completed");
+        this._debug("stopRecording() completed");
 
         // The recording process continues running for transcription
         // Process will be monitored via child_watch_add callback
@@ -647,13 +662,13 @@ VoiceKeyboardApplet.prototype = {
         // Clear any existing watchdog
         this._clearProcessingWatchdog();
 
-        global.log("[voice-keyboard] Starting watchdog timer (" + PROCESSING_WATCHDOG_MS + "ms)");
+        this._debug("Starting watchdog timer (" + PROCESSING_WATCHDOG_MS + "ms)");
         this._watchdogStartTime = Date.now();
 
         this._processingWatchdogId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROCESSING_WATCHDOG_MS,
             Lang.bind(this, function() {
                 let elapsed = Date.now() - this._watchdogStartTime;
-                global.log("[voice-keyboard] Watchdog callback fired after " + elapsed + "ms, state=" + this.currentState);
+                this._debug("Watchdog callback fired after " + elapsed + "ms, state=" + this.currentState);
                 if (this.currentState === STATE_PROCESSING) {
                     global.logError("[voice-keyboard] Processing watchdog timeout - server did not respond");
                     this.cancelTranscription();
@@ -664,7 +679,7 @@ VoiceKeyboardApplet.prototype = {
             })
         );
 
-        global.log("[voice-keyboard] Watchdog timer ID: " + this._processingWatchdogId);
+        this._debug("Watchdog timer ID: " + this._processingWatchdogId);
     },
 
     /**
@@ -673,7 +688,7 @@ VoiceKeyboardApplet.prototype = {
     _clearProcessingWatchdog: function() {
         if (this._processingWatchdogId) {
             let elapsed = this._watchdogStartTime ? (Date.now() - this._watchdogStartTime) : 0;
-            global.log("[voice-keyboard] Clearing watchdog timer (ID: " + this._processingWatchdogId + ") after " + elapsed + "ms");
+            this._debug("Clearing watchdog timer (ID: " + this._processingWatchdogId + ") after " + elapsed + "ms");
             GLib.source_remove(this._processingWatchdogId);
             this._processingWatchdogId = null;
         }
