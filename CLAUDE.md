@@ -51,12 +51,20 @@ python3 -m json.tool applet/voice-keyboard@perlover/settings-schema.json
 ## Debugging
 
 ```bash
-# Check Cinnamon logs (look for [voice-keyboard@perlover])
+# Enable debug logging (creates flag file)
+touch ~/.voice-keyboard-debug
+
+# Disable debug logging
+rm ~/.voice-keyboard-debug
+
+# Check Cinnamon logs (look for [voice-keyboard])
 tail -f ~/.xsession-errors
 
 # Restart Cinnamon after changes
 # Press Ctrl+Alt+Esc
 ```
+
+Debug mode is checked once at applet initialization. After creating/removing the flag file, restart Cinnamon to apply.
 
 ## Architecture
 
