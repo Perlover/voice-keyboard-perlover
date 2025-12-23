@@ -535,6 +535,10 @@ VoiceKeyboardApplet.prototype = {
                 let stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
                 stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
 
+                // Create IOChannel to read stderr for debugging
+                let stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
+                stderrChannel.set_flags(GLib.IOFlags.NONBLOCK);
+
                 // Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
                     this._debug("child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState);
@@ -551,6 +555,21 @@ VoiceKeyboardApplet.prototype = {
                         stdoutChannel.shutdown(false);
                     } catch (e) {
                         global.logError("[voice-keyboard] Error reading stdout: " + e);
+                    }
+
+                    // Read stderr for debugging
+                    let stderrText = '';
+                    try {
+                        let [readStatus, stderrData] = stderrChannel.read_to_end();
+                        if (stderrData) {
+                            stderrText = stderrData.toString().trim();
+                            if (stderrText) {
+                                this._debug("Script stderr: " + stderrText);
+                            }
+                        }
+                        stderrChannel.shutdown(false);
+                    } catch (e) {
+                        // Ignore stderr read errors
                     }
 
                     GLib.spawn_close_pid(pid);

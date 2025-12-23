@@ -432,6 +432,7 @@ def main():
             else:
                 sys.exit(EXIT_SUCCESS)
         else:
+            print("ERROR: paste_text() failed - text was not inserted", file=sys.stderr)
             sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
     finally:
