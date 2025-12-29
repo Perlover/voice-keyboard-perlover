@@ -30,10 +30,11 @@ EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
 
 
-def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.m4a"):
+def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.ogg"):
     """
     Record audio using ffmpeg until SIGTERM is received or max duration reached.
-    Records directly to M4A/AAC format for smaller file size and faster uploads.
+    Records to OGG/Opus format - streaming format that doesn't require finalization,
+    so files are valid even if recording is interrupted abruptly.
     Returns tuple: (success: bool, reached_max: bool)
     """
     ffmpeg_process = None
@@ -49,14 +50,15 @@ def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input
 
     try:
         # Use PulseAudio default source with maximum duration
-        # Record directly to M4A/AAC format (smaller file size than WAV)
+        # Record to OGG/Opus format - streaming format that doesn't require
+        # finalization (no moov atom like M4A), so files are always valid
         cmd = [
             'ffmpeg',
             '-f', 'pulse',
             '-i', 'default',
             '-t', str(max_duration),
-            '-c:a', 'aac',
-            '-b:a', '64k',
+            '-c:a', 'libopus',
+            '-b:a', '32k',  # 32kbps is sufficient for speech
             '-ar', '16000',
             '-ac', '1',
             '-y',  # Overwrite output file
@@ -92,7 +94,7 @@ def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input
         # Wait for ffmpeg to finish writing
         if ffmpeg_process:
             try:
-                ffmpeg_process.wait(timeout=2)
+                ffmpeg_process.wait(timeout=5)
             except subprocess.TimeoutExpired:
                 ffmpeg_process.kill()
 
@@ -134,7 +136,7 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
 
         with open(audio_file, 'rb') as f:
             files = {
-                'file': (os.path.basename(audio_file), f, 'audio/m4a'),
+                'file': (os.path.basename(audio_file), f, 'audio/ogg'),
                 'model': (None, model)
             }
 
@@ -186,7 +188,7 @@ def transcribe_local(audio_file, server_url, language="auto"):
 
         with open(audio_file, 'rb') as f:
             files = {
-                'audio_file': (os.path.basename(audio_file), f, 'audio/m4a')
+                'audio_file': (os.path.basename(audio_file), f, 'audio/ogg')
             }
 
             data = {}
@@ -387,8 +389,8 @@ def main():
     if not initial_window_id:
         print("WARNING: Could not get initial window ID, window tracking disabled", file=sys.stderr)
 
-    # Create temporary file for audio (M4A format for smaller size)
-    temp_audio = tempfile.mktemp(suffix='.m4a', prefix='whisper-voice-')
+    # Create temporary file for audio (OGG/Opus format - streaming, always valid)
+    temp_audio = tempfile.mktemp(suffix='.ogg', prefix='whisper-voice-')
 
     try:
         # Task 5.5: Record audio with user control and maximum duration

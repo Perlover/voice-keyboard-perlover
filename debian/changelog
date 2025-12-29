@@ -1,3 +1,12 @@
+voice-keyboard-perlover (1.6.0-1) noble; urgency=medium
+
+  * Switch audio format from M4A/AAC to OGG/Opus
+  * Fix "invalid_request_error" from OpenAI API due to corrupt M4A files
+  * OGG/Opus is a streaming format that doesn't require finalization
+  * Increase ffmpeg termination timeout from 2s to 5s
+
+ -- perlover <perlover@perlover.com>  Sun, 29 Dec 2025 21:00:00 +0100
+
 voice-keyboard-perlover (1.5.3-1) noble; urgency=medium
 
   * Fix infinite animation on transcription errors
