@@ -1,3 +1,10 @@
+voice-keyboard-perlover (1.6.1-1) noble; urgency=medium
+
+  * Fix ffmpeg subprocess pipe deadlock causing empty recordings on long inputs
+  * Redirect ffmpeg stdout/stderr to DEVNULL instead of PIPE to prevent buffer fill
+
+ -- perlover <perlover@perlover.com>  Sun, 02 Feb 2026 21:00:00 +0100
+
 voice-keyboard-perlover (1.6.0-1) noble; urgency=medium
 
   * Switch audio format from M4A/AAC to OGG/Opus
