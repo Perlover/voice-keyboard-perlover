@@ -1,0 +1,209 @@
+# Chinese translation for voice-keyboard@perlover
+# Copyright (C) 2024-2026 perlover
+# This file is distributed under the same license as the voice-keyboard@perlover package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-09 00:00+0000\n"
+"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"Last-Translator: perlover <perlover@perlover.com>\n"
+"Language-Team: Chinese (Simplified)\n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. applet.js - tooltip
+msgid "Voice Keyboard - Left-click to start/stop recording, Right-click for settings"
+msgstr "语音输入 - 左键开始/停止录音，右键打开设置"
+
+#. applet.js - menu
+msgid "Settings"
+msgstr "设置"
+
+#. applet.js - error dialog
+msgid "Voice Input Error"
+msgstr "语音输入错误"
+
+#. applet.js - error dialog
+msgid "An unknown error occurred"
+msgstr "发生未知错误"
+
+#. applet.js - error dialog
+msgid "Close"
+msgstr "关闭"
+
+#. applet.js - notification
+msgid "Settings are not configured"
+msgstr "设置未配置"
+
+#. applet.js - notification
+msgid "Maximum recording time reached"
+msgstr "已达到最大录音时长"
+
+#. applet.js - error
+msgid "Transcription failed"
+msgstr "转录失败"
+
+#. applet.js - error
+msgid "Recording failed"
+msgstr "录音失败"
+
+#. applet.js - notification
+msgid "Configuration error - please check settings"
+msgstr "配置错误 - 请检查设置"
+
+#. applet.js - error
+msgid "Process exited with code %d"
+msgstr "进程以代码 %d 退出"
+
+#. applet.js - notification
+msgid "Voice input failed"
+msgstr "语音输入失败"
+
+#. applet.js - error
+msgid "Failed to start voice input: "
+msgstr "无法启动语音输入："
+
+#. applet.js - notification
+msgid "Server did not respond in time"
+msgstr "服务器未及时响应"
+
+#. applet.js - notification (custom prompts)
+msgid "AI chat processing failed"
+msgstr "AI聊天处理失败"
+
+#. settings-schema.json
+msgid "Whisper mode"
+msgstr "Whisper 模式"
+
+#. settings-schema.json
+msgid "OpenAI API"
+msgstr "OpenAI API"
+
+#. settings-schema.json
+msgid "Local Server"
+msgstr "本地服务器"
+
+#. settings-schema.json
+msgid "Choose between OpenAI API or local Whisper server"
+msgstr "选择 OpenAI API 或本地 Whisper 服务器"
+
+#. settings-schema.json
+msgid "OpenAI API Key"
+msgstr "OpenAI API 密钥"
+
+#. settings-schema.json
+msgid "Your OpenAI API key for Whisper (required if using OpenAI mode)"
+msgstr "您的 OpenAI API 密钥（使用 OpenAI 模式时必需）"
+
+#. settings-schema.json
+msgid "OpenAI Model"
+msgstr "OpenAI 模型"
+
+#. settings-schema.json
+msgid "Whisper-1 (standard, $0.006/min)"
+msgstr "Whisper-1（标准，$0.006/分钟）"
+
+#. settings-schema.json
+msgid "GPT-4o Transcribe (best quality, $0.006/min)"
+msgstr "GPT-4o Transcribe（最佳质量，$0.006/分钟）"
+
+#. settings-schema.json
+msgid "Whisper-1: Standard speech-to-text. GPT-4o Transcribe: Latest model with best accuracy for all languages"
+msgstr "Whisper-1：标准语音转文字。GPT-4o Transcribe：最新模型，所有语言精度最高"
+
+#. settings-schema.json
+msgid "Local Whisper Server URL"
+msgstr "本地 Whisper 服务器 URL"
+
+#. settings-schema.json
+msgid "URL of your local Whisper server (e.g., faster-whisper-server)"
+msgstr "您的本地 Whisper 服务器 URL（例如 faster-whisper-server）"
+
+#. settings-schema.json
+msgid "Recognition language"
+msgstr "识别语言"
+
+#. settings-schema.json
+msgid "Auto-detect"
+msgstr "自动检测"
+
+#. settings-schema.json
+msgid "Russian"
+msgstr "俄语"
+
+#. settings-schema.json
+msgid "English"
+msgstr "英语"
+
+#. settings-schema.json
+msgid "Spanish"
+msgstr "西班牙语"
+
+#. settings-schema.json
+msgid "German"
+msgstr "德语"
+
+#. settings-schema.json
+msgid "French"
+msgstr "法语"
+
+#. settings-schema.json
+msgid "Chinese"
+msgstr "中文"
+
+#. settings-schema.json
+msgid "Japanese"
+msgstr "日语"
+
+#. settings-schema.json
+msgid "Language for speech recognition"
+msgstr "语音识别语言"
+
+#. settings-schema.json
+msgid "Maximum Recording Duration"
+msgstr "最大录音时长"
+
+#. settings-schema.json
+msgid "Safety limit for maximum recording duration. Recording will automatically stop and transcribe when this limit is reached. Default: 5 minutes (300 seconds)."
+msgstr "最大录音时长安全限制。达到此限制时，录音将自动停止并转录。默认：5分钟（300秒）。"
+
+#. settings-schema.json
+msgid "Path to whisper-voice-input script"
+msgstr "whisper-voice-input 脚本路径"
+
+#. settings-schema.json
+msgid "Full path to the voice input script"
+msgstr "语音输入脚本的完整路径"
+
+#. settings-schema.json
+msgid "Chat AI Model"
+msgstr "Chat AI 模型"
+
+#. settings-schema.json
+msgid "GPT-4o Mini (fast, economical)"
+msgstr "GPT-4o Mini（快速、经济）"
+
+#. settings-schema.json
+msgid "GPT-4o (best quality)"
+msgstr "GPT-4o（最佳质量）"
+
+#. settings-schema.json
+msgid "GPT-5 (latest)"
+msgstr "GPT-5（最新）"
+
+#. settings-schema.json
+msgid "Model for processing text with custom prompts"
+msgstr "用于自定义提示词处理文本的模型"
+
+#. settings-schema.json
+msgid "Custom Prompts"
+msgstr "自定义提示词"
+
+#. settings-schema.json
+msgid "Custom prompts appear in right-click menu and process speech through AI"
+msgstr "自定义提示词显示在右键菜单中，通过AI处理语音"

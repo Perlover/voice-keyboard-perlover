@@ -174,6 +174,58 @@ class TestPythonScriptModifications(unittest.TestCase):
 
         print("PASS: Paste method option removed, only clipboard method remains")
 
+    def test_chat_completion_function(self):
+        """
+        Test that chat_completion() function exists for custom prompt processing
+        """
+        with open(self.script_path, 'r') as f:
+            script_content = f.read()
+
+        # Verify chat_completion function exists
+        self.assertIn("def chat_completion(text, system_prompt, api_key, model=", script_content)
+
+        # Verify it uses Chat API endpoint
+        self.assertIn("/v1/chat/completions", script_content)
+
+        # Verify it sends system and user messages
+        self.assertIn('"role": "system"', script_content)
+        self.assertIn('"role": "user"', script_content)
+
+        print("PASS: chat_completion function is implemented")
+
+    def test_custom_prompt_env_vars(self):
+        """
+        Test that CUSTOM_PROMPT and CHAT_MODEL environment variables are handled
+        """
+        with open(self.script_path, 'r') as f:
+            script_content = f.read()
+
+        # Verify CUSTOM_PROMPT env var is read
+        self.assertIn("CUSTOM_PROMPT", script_content)
+
+        # Verify CHAT_MODEL env var is read
+        self.assertIn("CHAT_MODEL", script_content)
+
+        # Verify custom prompt triggers chat_completion
+        self.assertIn("if custom_prompt:", script_content)
+
+        print("PASS: Custom prompt environment variables are handled")
+
+    def test_exit_chat_error_defined(self):
+        """
+        Test that EXIT_CHAT_ERROR exit code is defined and used
+        """
+        with open(self.script_path, 'r') as f:
+            script_content = f.read()
+
+        # Verify EXIT_CHAT_ERROR constant
+        self.assertIn("EXIT_CHAT_ERROR = 6", script_content)
+
+        # Verify it is used
+        self.assertIn("sys.exit(EXIT_CHAT_ERROR)", script_content)
+
+        print("PASS: EXIT_CHAT_ERROR exit code is defined and used")
+
 
 def run_tests():
     """Run all tests and return success status"""

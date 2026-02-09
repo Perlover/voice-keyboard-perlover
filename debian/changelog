@@ -1,3 +1,16 @@
+voice-keyboard-perlover (1.7.0-1) noble; urgency=medium
+
+  * Add i18n support: 6 languages (ru, es, de, fr, zh, ja)
+  * Add version display in applet settings
+  * Add custom prompts with OpenAI Chat API integration
+  * Add dynamic right-click menu with custom prompt items
+  * Add chat-model setting (GPT-4o Mini, GPT-4o, GPT-5)
+  * Add EXIT_CHAT_ERROR (code 6) for chat processing failures
+  * Refactor startRecording into reusable _buildBaseEnvp/_spawnScript
+  * Single source of truth: version from metadata.json, auto-substituted
+
+ -- perlover <perlover@perlover.com>  Sun, 09 Feb 2026 12:00:00 +0100
+
 voice-keyboard-perlover (1.6.1-1) noble; urgency=medium
 
   * Fix ffmpeg subprocess pipe deadlock causing empty recordings on long inputs

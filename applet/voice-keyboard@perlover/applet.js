@@ -10,6 +10,18 @@ const Util = imports.misc.util;
 const Clutter = imports.gi.Clutter;
 const ModalDialog = imports.ui.modalDialog;
 const Mainloop = imports.mainloop;
+const Gettext = imports.gettext;
+
+const UUID = "voice-keyboard@perlover";
+
+Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
+Gettext.bindtextdomain(UUID, "/usr/share/locale");
+
+function _(str) {
+    let translated = Gettext.dgettext(UUID, str);
+    if (translated !== str) return translated;
+    return str;
+}
 
 // State constants
 const STATE_IDLE = 'STATE_IDLE';
@@ -24,6 +36,7 @@ const EXIT_RECORDING_ERROR = 2;
 const EXIT_TRANSCRIPTION_ERROR = 3;
 const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
+const EXIT_CHAT_ERROR = 6;
 
 // Watchdog timeout for STATE_PROCESSING (45 seconds)
 // Python script has 10s connect + 30s read timeout = 40s max
@@ -56,15 +69,18 @@ VoiceKeyboardApplet.prototype = {
         this.errorMessage = null;
         this.recordingProcess = null;
         this.errorOverlay = null;
+        this._activeCustomPrompt = null;
 
         // Bind settings
-        this.settings.bind("whisper-mode", "whisperMode");
+        this.settings.bind("whisper-mode", "whisperMode", Lang.bind(this, this._rebuildMenu));
         this.settings.bind("openai-api-key", "openaiApiKey");
         this.settings.bind("openai-model", "openaiModel");
         this.settings.bind("local-url", "localUrl");
         this.settings.bind("language", "language");
         this.settings.bind("recording-duration", "recordingDuration");
         this.settings.bind("script-path", "scriptPath");
+        this.settings.bind("chat-model", "chatModel");
+        this.settings.bind("custom-prompts", "customPrompts", Lang.bind(this, this._rebuildMenu));
 
         // Set icon
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
@@ -77,17 +93,8 @@ VoiceKeyboardApplet.prototype = {
         this.menu = new Applet.AppletPopupMenu(this, orientation);
         this.menuManager.addMenu(this.menu);
 
-        // Task 2.5: Remove "Start Voice Input" menu item and separator
-        // Only keep Settings menu item
-        let settingsItem = new PopupMenu.PopupIconMenuItem(
-            _("Settings"),
-            "preferences-system-symbolic",
-            St.IconType.SYMBOLIC
-        );
-        settingsItem.connect('activate', Lang.bind(this, function() {
-            Util.spawnCommandLine("cinnamon-settings applets " + metadata.uuid);
-        }));
-        this.menu.addMenuItem(settingsItem);
+        // Build dynamic menu (custom prompts + settings)
+        this._rebuildMenu();
 
         // Connect button press event handler for right-click menu
         this.actor.connect('button-press-event', Lang.bind(this, this._onButtonPressEvent));
@@ -100,6 +107,50 @@ VoiceKeyboardApplet.prototype = {
         if (this._debugMode) {
             global.log("[voice-keyboard] " + message);
         }
+    },
+
+    /**
+     * Build dynamic right-click menu with custom prompts and settings
+     */
+    _rebuildMenu: function() {
+        this.menu.removeAll();
+        this._debug("Rebuilding menu: mode=" + this.whisperMode + ", prompts=" + (this.customPrompts ? this.customPrompts.length : 0));
+
+        // Custom prompts (only in OpenAI mode)
+        if (this.whisperMode === 'openai' && this.customPrompts && this.customPrompts.length > 0) {
+            var hasPrompts = false;
+            for (var i = 0; i < this.customPrompts.length; i++) {
+                var prompt = this.customPrompts[i];
+                if (!prompt.enabled) continue;
+                hasPrompts = true;
+                var promptItem = new PopupMenu.PopupIconMenuItem(
+                    prompt.name,
+                    "accessories-text-editor-symbolic",
+                    St.IconType.SYMBOLIC
+                );
+                // Closure to capture promptData
+                (function(applet, promptData) {
+                    promptItem.connect('activate', Lang.bind(applet, function() {
+                        applet._startCustomPromptRecording(promptData);
+                    }));
+                })(this, prompt);
+                this.menu.addMenuItem(promptItem);
+            }
+            if (hasPrompts) {
+                this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+            }
+        }
+
+        // Settings — always present
+        var settingsItem = new PopupMenu.PopupIconMenuItem(
+            _("Settings"),
+            "preferences-system-symbolic",
+            St.IconType.SYMBOLIC
+        );
+        settingsItem.connect('activate', Lang.bind(this, function() {
+            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+        }));
+        this.menu.addMenuItem(settingsItem);
     },
 
     /**
@@ -460,7 +511,7 @@ VoiceKeyboardApplet.prototype = {
                     // Open settings dialog and show notification
                     Main.notify(
                         "Voice Keyboard Perlover",
-                        "Settings are not configured"
+                        _("Settings are not configured")
                     );
                     Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
                     return;
@@ -487,25 +538,11 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 3.5: Implement startRecording() function
-     * Start recording with proper configuration validation and process management
+     * Build base environment variables for the Python script
      */
-    startRecording: function() {
-        // Validate configuration first
-        if (!this.validateConfiguration()) {
-            Main.notify(
-                "Voice Keyboard Perlover",
-                "Settings are not configured"
-            );
-            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
-            return;
-        }
-
-        // Transition to RECORDING state
-        this.setState(STATE_RECORDING);
-
-        // Prepare environment variables
-        let envp = GLib.get_environ();
+    _buildBaseEnvp: function() {
+        this._debug("Building envp: mode=" + this.whisperMode + ", language=" + this.language);
+        var envp = GLib.get_environ();
         envp.push('WHISPER_MODE=' + this.whisperMode);
         envp.push('WHISPER_LANGUAGE=' + this.language);
         envp.push('RECORDING_DURATION=' + this.recordingDuration);
@@ -516,10 +553,15 @@ VoiceKeyboardApplet.prototype = {
         } else if (this.whisperMode === 'local') {
             envp.push('WHISPER_LOCAL_URL=' + this.localUrl);
         }
+        return envp;
+    },
 
-        // Launch script with stdout pipe to read recognized text
+    /**
+     * Spawn the Python script with given environment and handle exit codes
+     */
+    _spawnScript: function(envp) {
         try {
-            let [success, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes(
+            var [success, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes(
                 null,
                 [this.scriptPath],
                 envp,
@@ -528,27 +570,22 @@ VoiceKeyboardApplet.prototype = {
             );
 
             if (success) {
-                // Store process reference
                 this.recordingProcess = { pid: pid };
+                this._debug("Script spawned: pid=" + pid + ", customPrompt=" + (this._activeCustomPrompt ? this._activeCustomPrompt.name : "none"));
 
-                // Create IOChannel to read stdout
-                let stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
+                var stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
                 stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
 
-                // Create IOChannel to read stderr for debugging
-                let stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
+                var stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
                 stderrChannel.set_flags(GLib.IOFlags.NONBLOCK);
 
-                // Watch for process completion and handle exit codes
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
-                    this._debug("child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState);
-                    // Clear watchdog timer - process completed normally
+                    this._debug("child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState + ", customPrompt=" + (this._activeCustomPrompt ? this._activeCustomPrompt.name : "none"));
                     this._clearProcessingWatchdog();
 
-                    // Read stdout before closing
-                    let outputText = '';
+                    var outputText = '';
                     try {
-                        let [readStatus, stdoutData] = stdoutChannel.read_to_end();
+                        var [readStatus, stdoutData] = stdoutChannel.read_to_end();
                         if (stdoutData) {
                             outputText = stdoutData.toString().trim();
                         }
@@ -557,10 +594,9 @@ VoiceKeyboardApplet.prototype = {
                         global.logError("[voice-keyboard] Error reading stdout: " + e);
                     }
 
-                    // Read stderr for debugging
-                    let stderrText = '';
+                    var stderrText = '';
                     try {
-                        let [readStatus, stderrData] = stderrChannel.read_to_end();
+                        var [readStatus2, stderrData] = stderrChannel.read_to_end();
                         if (stderrData) {
                             stderrText = stderrData.toString().trim();
                             if (stderrText) {
@@ -572,72 +608,123 @@ VoiceKeyboardApplet.prototype = {
                         // Ignore stderr read errors
                     }
 
+                    this._debug("child_watch: stdout_len=" + outputText.length + ", stderr_len=" + stderrText.length);
+
                     GLib.spawn_close_pid(pid);
                     this.recordingProcess = null;
 
-                    // Get exit code from status
-                    let exitCode = 0;
+                    var exitCode = 0;
                     if (status !== null) {
                         exitCode = (status >> 8) & 0xFF;
                     }
 
-                    // Handle different exit codes
+                    // Handle exit codes
                     if (exitCode === EXIT_SUCCESS) {
-                        // Success - text was pasted via PRIMARY method
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TIMEOUT) {
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            "Maximum recording time reached"
+                            _("Maximum recording time reached")
                         );
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TRANSCRIPTION_ERROR) {
-                        this.errorMessage = "Transcription failed";
+                        this.errorMessage = _("Transcription failed");
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            "Transcription failed"
+                            _("Transcription failed")
                         );
                         this.setState(STATE_ERROR);
 
                     } else if (exitCode === EXIT_RECORDING_ERROR) {
-                        this.errorMessage = "Recording failed";
+                        this.errorMessage = _("Recording failed");
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            "Recording failed"
+                            _("Recording failed")
                         );
                         this.setState(STATE_ERROR);
 
                     } else if (exitCode === EXIT_CONFIG_ERROR) {
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            "Configuration error - please check settings"
+                            _("Configuration error - please check settings")
                         );
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_CANCELLED) {
                         this.setState(STATE_IDLE);
 
-                    } else {
-                        this.errorMessage = "Process exited with code " + exitCode;
+                    } else if (exitCode === EXIT_CHAT_ERROR) {
+                        this.errorMessage = _("AI chat processing failed");
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            "Voice input failed"
+                            _("AI chat processing failed")
+                        );
+                        this.setState(STATE_ERROR);
+
+                    } else {
+                        this.errorMessage = _("Process exited with code %d").replace("%d", exitCode);
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            _("Voice input failed")
                         );
                         this.setState(STATE_ERROR);
                     }
+
+                    // Clear custom prompt state
+                    this._activeCustomPrompt = null;
                 }));
             }
         } catch (e) {
             Main.notifyError(
-                "Voice Input Error",
-                "Failed to start voice input: " + e.message
+                _("Voice Input Error"),
+                _("Failed to start voice input: ") + e.message
             );
             global.logError("Voice input error: " + e);
-            this.errorMessage = "Failed to start voice input: " + e.message;
+            this.errorMessage = _("Failed to start voice input: ") + e.message;
+            this._activeCustomPrompt = null;
             this.setState(STATE_ERROR);
         }
+    },
+
+    /**
+     * Start recording with standard transcription (no custom prompt)
+     */
+    startRecording: function() {
+        if (!this.validateConfiguration()) {
+            Main.notify(
+                "Voice Keyboard Perlover",
+                _("Settings are not configured")
+            );
+            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+            return;
+        }
+
+        this._activeCustomPrompt = null;
+        this.setState(STATE_RECORDING);
+        var envp = this._buildBaseEnvp();
+        this._spawnScript(envp);
+    },
+
+    /**
+     * Start recording with a custom prompt for AI chat processing
+     */
+    _startCustomPromptRecording: function(promptData) {
+        if (!this.validateConfiguration()) {
+            Main.notify(
+                "Voice Keyboard Perlover",
+                _("Settings are not configured")
+            );
+            return;
+        }
+        this._debug("Custom prompt recording: name=" + promptData.name + ", chatModel=" + this.chatModel);
+        this._activeCustomPrompt = promptData;
+        this.setState(STATE_RECORDING);
+        var envp = this._buildBaseEnvp();
+        envp.push('CUSTOM_PROMPT=' + promptData.prompt);
+        envp.push('CHAT_MODEL=' + (this.chatModel || 'gpt-4o-mini'));
+        this._spawnScript(envp);
     },
 
     /**
@@ -665,8 +752,14 @@ VoiceKeyboardApplet.prototype = {
         }
 
         // Start watchdog timer to prevent infinite hang if server doesn't respond
-        this._debug("About to start watchdog timer");
-        this._startProcessingWatchdog();
+        // Use longer timeout for custom prompts (2 API calls: transcription + chat)
+        if (this._activeCustomPrompt) {
+            this._debug("About to start watchdog timer (custom prompt mode, 120s)");
+            this._startProcessingWatchdog(120000);
+        } else {
+            this._debug("About to start watchdog timer (standard mode)");
+            this._startProcessingWatchdog();
+        }
         this._debug("stopRecording() completed");
 
         // The recording process continues running for transcription
@@ -676,22 +769,24 @@ VoiceKeyboardApplet.prototype = {
     /**
      * Start watchdog timer for STATE_PROCESSING
      * Automatically cancels transcription if it takes too long
+     * @param {number} timeoutMs - optional timeout in ms (default: PROCESSING_WATCHDOG_MS)
      */
-    _startProcessingWatchdog: function() {
+    _startProcessingWatchdog: function(timeoutMs) {
+        var timeout = timeoutMs || PROCESSING_WATCHDOG_MS;
         // Clear any existing watchdog
         this._clearProcessingWatchdog();
 
-        this._debug("Starting watchdog timer (" + PROCESSING_WATCHDOG_MS + "ms)");
+        this._debug("Starting watchdog timer (" + timeout + "ms)");
         this._watchdogStartTime = Date.now();
 
-        this._processingWatchdogId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, PROCESSING_WATCHDOG_MS,
+        this._processingWatchdogId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, timeout,
             Lang.bind(this, function() {
                 let elapsed = Date.now() - this._watchdogStartTime;
                 this._debug("Watchdog callback fired after " + elapsed + "ms, state=" + this.currentState);
                 if (this.currentState === STATE_PROCESSING) {
                     global.logError("[voice-keyboard] Processing watchdog timeout - server did not respond");
                     this.cancelTranscription();
-                    Main.notify("Voice Keyboard Perlover", "Server did not respond in time");
+                    Main.notify("Voice Keyboard Perlover", _("Server did not respond in time"));
                 }
                 this._processingWatchdogId = null;
                 return GLib.SOURCE_REMOVE;

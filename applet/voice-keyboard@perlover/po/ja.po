@@ -1,0 +1,209 @@
+# Japanese translation for voice-keyboard@perlover
+# Copyright (C) 2024-2026 perlover
+# This file is distributed under the same license as the voice-keyboard@perlover package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-09 00:00+0000\n"
+"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"Last-Translator: perlover <perlover@perlover.com>\n"
+"Language-Team: Japanese\n"
+"Language: ja\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+#. applet.js - tooltip
+msgid "Voice Keyboard - Left-click to start/stop recording, Right-click for settings"
+msgstr "音声入力 - 左クリックで録音開始/停止、右クリックで設定"
+
+#. applet.js - menu
+msgid "Settings"
+msgstr "設定"
+
+#. applet.js - error dialog
+msgid "Voice Input Error"
+msgstr "音声入力エラー"
+
+#. applet.js - error dialog
+msgid "An unknown error occurred"
+msgstr "不明なエラーが発生しました"
+
+#. applet.js - error dialog
+msgid "Close"
+msgstr "閉じる"
+
+#. applet.js - notification
+msgid "Settings are not configured"
+msgstr "設定が構成されていません"
+
+#. applet.js - notification
+msgid "Maximum recording time reached"
+msgstr "最大録音時間に達しました"
+
+#. applet.js - error
+msgid "Transcription failed"
+msgstr "文字起こしに失敗しました"
+
+#. applet.js - error
+msgid "Recording failed"
+msgstr "録音に失敗しました"
+
+#. applet.js - notification
+msgid "Configuration error - please check settings"
+msgstr "設定エラー — 設定を確認してください"
+
+#. applet.js - error
+msgid "Process exited with code %d"
+msgstr "プロセスがコード %d で終了しました"
+
+#. applet.js - notification
+msgid "Voice input failed"
+msgstr "音声入力に失敗しました"
+
+#. applet.js - error
+msgid "Failed to start voice input: "
+msgstr "音声入力の開始に失敗しました："
+
+#. applet.js - notification
+msgid "Server did not respond in time"
+msgstr "サーバーが時間内に応答しませんでした"
+
+#. applet.js - notification (custom prompts)
+msgid "AI chat processing failed"
+msgstr "AIチャット処理に失敗しました"
+
+#. settings-schema.json
+msgid "Whisper mode"
+msgstr "Whisper モード"
+
+#. settings-schema.json
+msgid "OpenAI API"
+msgstr "OpenAI API"
+
+#. settings-schema.json
+msgid "Local Server"
+msgstr "ローカルサーバー"
+
+#. settings-schema.json
+msgid "Choose between OpenAI API or local Whisper server"
+msgstr "OpenAI API またはローカル Whisper サーバーを選択"
+
+#. settings-schema.json
+msgid "OpenAI API Key"
+msgstr "OpenAI APIキー"
+
+#. settings-schema.json
+msgid "Your OpenAI API key for Whisper (required if using OpenAI mode)"
+msgstr "Whisper 用の OpenAI APIキー（OpenAI モード使用時に必要）"
+
+#. settings-schema.json
+msgid "OpenAI Model"
+msgstr "OpenAI モデル"
+
+#. settings-schema.json
+msgid "Whisper-1 (standard, $0.006/min)"
+msgstr "Whisper-1（標準、$0.006/分）"
+
+#. settings-schema.json
+msgid "GPT-4o Transcribe (best quality, $0.006/min)"
+msgstr "GPT-4o Transcribe（最高品質、$0.006/分）"
+
+#. settings-schema.json
+msgid "Whisper-1: Standard speech-to-text. GPT-4o Transcribe: Latest model with best accuracy for all languages"
+msgstr "Whisper-1：標準の音声認識。GPT-4o Transcribe：全言語で最高の精度を持つ最新モデル"
+
+#. settings-schema.json
+msgid "Local Whisper Server URL"
+msgstr "ローカル Whisper サーバー URL"
+
+#. settings-schema.json
+msgid "URL of your local Whisper server (e.g., faster-whisper-server)"
+msgstr "ローカル Whisper サーバーの URL（例：faster-whisper-server）"
+
+#. settings-schema.json
+msgid "Recognition language"
+msgstr "認識言語"
+
+#. settings-schema.json
+msgid "Auto-detect"
+msgstr "自動検出"
+
+#. settings-schema.json
+msgid "Russian"
+msgstr "ロシア語"
+
+#. settings-schema.json
+msgid "English"
+msgstr "英語"
+
+#. settings-schema.json
+msgid "Spanish"
+msgstr "スペイン語"
+
+#. settings-schema.json
+msgid "German"
+msgstr "ドイツ語"
+
+#. settings-schema.json
+msgid "French"
+msgstr "フランス語"
+
+#. settings-schema.json
+msgid "Chinese"
+msgstr "中国語"
+
+#. settings-schema.json
+msgid "Japanese"
+msgstr "日本語"
+
+#. settings-schema.json
+msgid "Language for speech recognition"
+msgstr "音声認識の言語"
+
+#. settings-schema.json
+msgid "Maximum Recording Duration"
+msgstr "最大録音時間"
+
+#. settings-schema.json
+msgid "Safety limit for maximum recording duration. Recording will automatically stop and transcribe when this limit is reached. Default: 5 minutes (300 seconds)."
+msgstr "最大録音時間の安全制限。この制限に達すると、録音は自動的に停止して文字起こしされます。デフォルト：5分（300秒）。"
+
+#. settings-schema.json
+msgid "Path to whisper-voice-input script"
+msgstr "whisper-voice-input スクリプトのパス"
+
+#. settings-schema.json
+msgid "Full path to the voice input script"
+msgstr "音声入力スクリプトのフルパス"
+
+#. settings-schema.json
+msgid "Chat AI Model"
+msgstr "Chat AI モデル"
+
+#. settings-schema.json
+msgid "GPT-4o Mini (fast, economical)"
+msgstr "GPT-4o Mini（高速、経済的）"
+
+#. settings-schema.json
+msgid "GPT-4o (best quality)"
+msgstr "GPT-4o（最高品質）"
+
+#. settings-schema.json
+msgid "GPT-5 (latest)"
+msgstr "GPT-5（最新）"
+
+#. settings-schema.json
+msgid "Model for processing text with custom prompts"
+msgstr "カスタムプロンプトでテキストを処理するモデル"
+
+#. settings-schema.json
+msgid "Custom Prompts"
+msgstr "カスタムプロンプト"
+
+#. settings-schema.json
+msgid "Custom prompts appear in right-click menu and process speech through AI"
+msgstr "カスタムプロンプトは右クリックメニューに表示され、AIを通じて音声を処理します"

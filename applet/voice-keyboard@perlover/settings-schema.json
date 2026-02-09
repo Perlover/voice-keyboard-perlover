@@ -1,4 +1,8 @@
 {
+    "version-label": {
+        "type": "label",
+        "description": "Voice Keyboard Perlover v@@VERSION@@"
+    },
     "whisper-mode": {
         "type": "combobox",
         "default": "openai",
@@ -65,5 +69,29 @@
         "default": "/usr/bin/whisper-voice-input",
         "description": "Path to whisper-voice-input script",
         "tooltip": "Full path to the voice input script"
+    },
+    "chat-model": {
+        "type": "combobox",
+        "default": "gpt-4o-mini",
+        "description": "Chat AI Model",
+        "options": {
+            "GPT-4o Mini (fast, economical)": "gpt-4o-mini",
+            "GPT-4o (best quality)": "gpt-4o",
+            "GPT-5 (latest)": "gpt-5"
+        },
+        "tooltip": "Model for processing text with custom prompts",
+        "dependency": "whisper-mode=openai"
+    },
+    "custom-prompts": {
+        "type": "list",
+        "description": "Custom Prompts",
+        "tooltip": "Custom prompts appear in right-click menu and process speech through AI",
+        "dependency": "whisper-mode=openai",
+        "columns": [
+            {"id": "enabled", "title": "Enabled", "type": "boolean", "default": true},
+            {"id": "name", "title": "Menu Name", "type": "string", "default": "New Prompt"},
+            {"id": "prompt", "title": "System Prompt", "type": "string", "default": ""}
+        ],
+        "default": []
     }
 }

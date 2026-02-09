@@ -8,9 +8,20 @@ override_dh_auto_install:
 	install -d $(CURDIR)/debian/voice-keyboard-perlover/usr/share/cinnamon/applets/voice-keyboard@perlover
 	cp -r applet/voice-keyboard@perlover/* $(CURDIR)/debian/voice-keyboard-perlover/usr/share/cinnamon/applets/voice-keyboard@perlover/
 
+	# Substitute version from metadata.json into settings-schema.json
+	VERSION=$$(python3 -c "import json; print(json.load(open('applet/voice-keyboard@perlover/metadata.json'))['version'])") && \
+	sed -i "s/@@VERSION@@/$$VERSION/g" $(CURDIR)/debian/voice-keyboard-perlover/usr/share/cinnamon/applets/voice-keyboard@perlover/settings-schema.json
+
 	# Install script
 	install -d $(CURDIR)/debian/voice-keyboard-perlover/usr/bin
 	install -m 0755 scripts/whisper-voice-input $(CURDIR)/debian/voice-keyboard-perlover/usr/bin/whisper-voice-input
+
+	# Install locale files
+	for po in applet/voice-keyboard@perlover/po/*.po; do \
+		lang=$$(basename "$$po" .po); \
+		install -d $(CURDIR)/debian/voice-keyboard-perlover/usr/share/locale/$$lang/LC_MESSAGES; \
+		msgfmt -c "$$po" -o $(CURDIR)/debian/voice-keyboard-perlover/usr/share/locale/$$lang/LC_MESSAGES/voice-keyboard@perlover.mo; \
+	done
 
 override_dh_auto_build:
 	# Nothing to build

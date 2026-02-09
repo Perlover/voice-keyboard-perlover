@@ -101,6 +101,7 @@ The script communicates results via exit codes:
 - `3` - Transcription error (API)
 - `4` - Cancelled by user
 - `5` - Timeout reached (max duration)
+- `6` - Chat API error (custom prompt processing failed)
 
 ### Settings Schema
 
@@ -143,11 +144,12 @@ GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, s
 - Uses ffmpeg with `-f pulse` for audio (works with PulseAudio and PipeWire)
 - Audio format: M4A/AAC at 16kHz mono for fast API uploads
 - Text pasting: xclip to both CLIPBOARD and PRIMARY selections, then xdotool Shift+Insert
-- Environment variables for config: `WHISPER_MODE`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`
+- Environment variables for config: `WHISPER_MODE`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `CUSTOM_PROMPT`, `CHAT_MODEL`
 
 ## Version Updates
 
 When releasing a new version, update these files:
 1. `debian/changelog` - Add new entry at top
-2. `applet/voice-keyboard@perlover/metadata.json` - Update `version`
-3. `Makefile` - Update `VERSION` variable
+2. `applet/voice-keyboard@perlover/metadata.json` - Update `version` (single source of truth)
+3. `Makefile` reads VERSION from metadata.json automatically
+4. `settings-schema.json` version label uses `@@VERSION@@` placeholder, substituted at install/build time

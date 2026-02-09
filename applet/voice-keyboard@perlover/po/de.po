@@ -1,0 +1,209 @@
+# German translation for voice-keyboard@perlover
+# Copyright (C) 2024-2026 perlover
+# This file is distributed under the same license as the voice-keyboard@perlover package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-02-09 00:00+0000\n"
+"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"Last-Translator: perlover <perlover@perlover.com>\n"
+"Language-Team: German\n"
+"Language: de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#. applet.js - tooltip
+msgid "Voice Keyboard - Left-click to start/stop recording, Right-click for settings"
+msgstr "Spracheingabe - Linksklick zum Starten/Stoppen der Aufnahme, Rechtsklick für Einstellungen"
+
+#. applet.js - menu
+msgid "Settings"
+msgstr "Einstellungen"
+
+#. applet.js - error dialog
+msgid "Voice Input Error"
+msgstr "Fehler bei der Spracheingabe"
+
+#. applet.js - error dialog
+msgid "An unknown error occurred"
+msgstr "Ein unbekannter Fehler ist aufgetreten"
+
+#. applet.js - error dialog
+msgid "Close"
+msgstr "Schließen"
+
+#. applet.js - notification
+msgid "Settings are not configured"
+msgstr "Einstellungen sind nicht konfiguriert"
+
+#. applet.js - notification
+msgid "Maximum recording time reached"
+msgstr "Maximale Aufnahmezeit erreicht"
+
+#. applet.js - error
+msgid "Transcription failed"
+msgstr "Transkription fehlgeschlagen"
+
+#. applet.js - error
+msgid "Recording failed"
+msgstr "Aufnahme fehlgeschlagen"
+
+#. applet.js - notification
+msgid "Configuration error - please check settings"
+msgstr "Konfigurationsfehler — bitte Einstellungen prüfen"
+
+#. applet.js - error
+msgid "Process exited with code %d"
+msgstr "Prozess mit Code %d beendet"
+
+#. applet.js - notification
+msgid "Voice input failed"
+msgstr "Spracheingabe fehlgeschlagen"
+
+#. applet.js - error
+msgid "Failed to start voice input: "
+msgstr "Spracheingabe konnte nicht gestartet werden: "
+
+#. applet.js - notification
+msgid "Server did not respond in time"
+msgstr "Server hat nicht rechtzeitig geantwortet"
+
+#. applet.js - notification (custom prompts)
+msgid "AI chat processing failed"
+msgstr "AI-Chat-Verarbeitung fehlgeschlagen"
+
+#. settings-schema.json
+msgid "Whisper mode"
+msgstr "Whisper-Modus"
+
+#. settings-schema.json
+msgid "OpenAI API"
+msgstr "OpenAI API"
+
+#. settings-schema.json
+msgid "Local Server"
+msgstr "Lokaler Server"
+
+#. settings-schema.json
+msgid "Choose between OpenAI API or local Whisper server"
+msgstr "Wählen Sie zwischen OpenAI API oder lokalem Whisper-Server"
+
+#. settings-schema.json
+msgid "OpenAI API Key"
+msgstr "OpenAI API-Schlüssel"
+
+#. settings-schema.json
+msgid "Your OpenAI API key for Whisper (required if using OpenAI mode)"
+msgstr "Ihr OpenAI API-Schlüssel für Whisper (erforderlich im OpenAI-Modus)"
+
+#. settings-schema.json
+msgid "OpenAI Model"
+msgstr "OpenAI-Modell"
+
+#. settings-schema.json
+msgid "Whisper-1 (standard, $0.006/min)"
+msgstr "Whisper-1 (Standard, $0,006/Min)"
+
+#. settings-schema.json
+msgid "GPT-4o Transcribe (best quality, $0.006/min)"
+msgstr "GPT-4o Transcribe (beste Qualität, $0,006/Min)"
+
+#. settings-schema.json
+msgid "Whisper-1: Standard speech-to-text. GPT-4o Transcribe: Latest model with best accuracy for all languages"
+msgstr "Whisper-1: Standard-Spracherkennung. GPT-4o Transcribe: Neuestes Modell mit bester Genauigkeit für alle Sprachen"
+
+#. settings-schema.json
+msgid "Local Whisper Server URL"
+msgstr "URL des lokalen Whisper-Servers"
+
+#. settings-schema.json
+msgid "URL of your local Whisper server (e.g., faster-whisper-server)"
+msgstr "URL Ihres lokalen Whisper-Servers (z.B. faster-whisper-server)"
+
+#. settings-schema.json
+msgid "Recognition language"
+msgstr "Erkennungssprache"
+
+#. settings-schema.json
+msgid "Auto-detect"
+msgstr "Automatische Erkennung"
+
+#. settings-schema.json
+msgid "Russian"
+msgstr "Russisch"
+
+#. settings-schema.json
+msgid "English"
+msgstr "Englisch"
+
+#. settings-schema.json
+msgid "Spanish"
+msgstr "Spanisch"
+
+#. settings-schema.json
+msgid "German"
+msgstr "Deutsch"
+
+#. settings-schema.json
+msgid "French"
+msgstr "Französisch"
+
+#. settings-schema.json
+msgid "Chinese"
+msgstr "Chinesisch"
+
+#. settings-schema.json
+msgid "Japanese"
+msgstr "Japanisch"
+
+#. settings-schema.json
+msgid "Language for speech recognition"
+msgstr "Sprache für Spracherkennung"
+
+#. settings-schema.json
+msgid "Maximum Recording Duration"
+msgstr "Maximale Aufnahmedauer"
+
+#. settings-schema.json
+msgid "Safety limit for maximum recording duration. Recording will automatically stop and transcribe when this limit is reached. Default: 5 minutes (300 seconds)."
+msgstr "Sicherheitslimit für die maximale Aufnahmedauer. Die Aufnahme wird automatisch gestoppt und transkribiert, wenn dieses Limit erreicht wird. Standard: 5 Minuten (300 Sekunden)."
+
+#. settings-schema.json
+msgid "Path to whisper-voice-input script"
+msgstr "Pfad zum whisper-voice-input-Skript"
+
+#. settings-schema.json
+msgid "Full path to the voice input script"
+msgstr "Vollständiger Pfad zum Spracheingabe-Skript"
+
+#. settings-schema.json
+msgid "Chat AI Model"
+msgstr "Chat-AI-Modell"
+
+#. settings-schema.json
+msgid "GPT-4o Mini (fast, economical)"
+msgstr "GPT-4o Mini (schnell, wirtschaftlich)"
+
+#. settings-schema.json
+msgid "GPT-4o (best quality)"
+msgstr "GPT-4o (beste Qualität)"
+
+#. settings-schema.json
+msgid "GPT-5 (latest)"
+msgstr "GPT-5 (neueste)"
+
+#. settings-schema.json
+msgid "Model for processing text with custom prompts"
+msgstr "Modell zur Textverarbeitung mit benutzerdefinierten Prompts"
+
+#. settings-schema.json
+msgid "Custom Prompts"
+msgstr "Benutzerdefinierte Prompts"
+
+#. settings-schema.json
+msgid "Custom prompts appear in right-click menu and process speech through AI"
+msgstr "Benutzerdefinierte Prompts erscheinen im Kontextmenü und verarbeiten Sprache durch AI"

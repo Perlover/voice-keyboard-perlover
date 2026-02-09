@@ -1,16 +1,27 @@
-.PHONY: all clean install uninstall deb deb-install deb-clean deps-install help
+.PHONY: all clean install uninstall deb deb-install deb-clean deps-install help i18n
 
 PACKAGE_NAME = voice-keyboard-perlover
-VERSION = 1.6.1
 APPLET_UUID = voice-keyboard@perlover
+VERSION = $(shell python3 -c "import json; print(json.load(open('applet/$(APPLET_UUID)/metadata.json'))['version'])")
 
 PREFIX ?= /usr
 DESTDIR ?=
 
 APPLET_DIR = $(DESTDIR)$(PREFIX)/share/cinnamon/applets/$(APPLET_UUID)
 BIN_DIR = $(DESTDIR)$(PREFIX)/bin
+LOCALE_DIR = $(DESTDIR)$(PREFIX)/share/locale
 
 all: help
+
+i18n:
+	@echo "Compiling translations..."
+	@for po in applet/$(APPLET_UUID)/po/*.po; do \
+		lang=$$(basename "$$po" .po); \
+		mkdir -p applet/$(APPLET_UUID)/locale/$$lang/LC_MESSAGES; \
+		msgfmt -c "$$po" -o applet/$(APPLET_UUID)/locale/$$lang/LC_MESSAGES/$(APPLET_UUID).mo; \
+		echo "  Compiled $$lang.po"; \
+	done
+	@echo "Translations compiled."
 
 help:
 	@echo "Voice Keyboard Perlover - Makefile"
@@ -26,12 +37,20 @@ help:
 	@echo "  make help          - Show this help message"
 	@echo ""
 
-install:
-	@echo "Installing $(PACKAGE_NAME)..."
+install: i18n
+	@echo "Installing $(PACKAGE_NAME) v$(VERSION)..."
 	install -d $(APPLET_DIR)
 	cp -r applet/$(APPLET_UUID)/* $(APPLET_DIR)/
+	sed -i 's/@@VERSION@@/$(VERSION)/g' $(APPLET_DIR)/settings-schema.json
 	install -d $(BIN_DIR)
 	install -m 0755 scripts/whisper-voice-input $(BIN_DIR)/whisper-voice-input
+	@echo "Installing locale files..."
+	@for po in applet/$(APPLET_UUID)/po/*.po; do \
+		lang=$$(basename "$$po" .po); \
+		install -d $(LOCALE_DIR)/$$lang/LC_MESSAGES; \
+		install -m 0644 applet/$(APPLET_UUID)/locale/$$lang/LC_MESSAGES/$(APPLET_UUID).mo \
+			$(LOCALE_DIR)/$$lang/LC_MESSAGES/$(APPLET_UUID).mo; \
+	done
 	@echo ""
 	@echo "Installation complete!"
 	@echo "Restart Cinnamon or log out/in to see the applet in the Applets menu."
@@ -101,6 +120,7 @@ deb-clean:
 
 clean: deb-clean
 	@echo "Cleaning all generated files..."
+	rm -rf applet/$(APPLET_UUID)/locale/
 	find . -type f -name "*~" -delete
 	find . -type f -name "*.pyc" -delete
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true

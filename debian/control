@@ -2,7 +2,7 @@ Source: voice-keyboard-perlover
 Section: gnome
 Priority: optional
 Maintainer: perlover <perlover@perlover.com>
-Build-Depends: debhelper-compat (= 13)
+Build-Depends: debhelper-compat (= 13), gettext
 Standards-Version: 4.6.2
 Homepage: https://github.com/perlover/voice-keyboard-perlover
 Vcs-Browser: https://github.com/perlover/voice-keyboard-perlover

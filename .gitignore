@@ -33,6 +33,9 @@ __pycache__/
 test.wav
 /tmp/
 
+# Compiled locale files
+applet/voice-keyboard@perlover/locale/
+
 # Build directories
 build/
 dist/

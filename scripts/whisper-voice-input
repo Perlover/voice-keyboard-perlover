@@ -28,6 +28,7 @@ EXIT_RECORDING_ERROR = 2
 EXIT_TRANSCRIPTION_ERROR = 3
 EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
+EXIT_CHAT_ERROR = 6
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.ogg"):
@@ -229,6 +230,54 @@ def transcribe_local(audio_file, server_url, language="auto"):
         return None
 
 
+def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
+    """
+    Process text through OpenAI Chat API with a custom system prompt.
+    Returns processed text or None on error.
+    """
+    if not api_key:
+        print("ERROR: OPENAI_API_KEY is not set for chat completion", file=sys.stderr)
+        return None
+
+    try:
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        payload = {
+            "model": model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ]
+        }
+
+        print(f"Chat API request: model={model}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
+        start_time = time.time()
+        response = requests.post(url, headers=headers, json=payload, timeout=(10, 60))
+        elapsed = time.time() - start_time
+
+        if response.status_code == 200:
+            result = response.json()
+            content = result['choices'][0]['message']['content'].strip()
+            print(f"Chat API response: {elapsed:.1f}s, {len(content)} chars", file=sys.stderr)
+            return content
+        else:
+            print(f"ERROR: Chat API error: {response.status_code} {response.text}", file=sys.stderr)
+            return None
+
+    except requests.exceptions.Timeout:
+        print("ERROR: Chat API did not respond in time (60 sec limit)", file=sys.stderr)
+        return None
+    except requests.exceptions.ConnectionError:
+        print("ERROR: Cannot connect to OpenAI Chat API", file=sys.stderr)
+        return None
+    except Exception as e:
+        print(f"ERROR: Chat completion failed: {e}", file=sys.stderr)
+        return None
+
+
 def get_active_window():
     """
     Get the active window ID using xdotool
@@ -419,8 +468,22 @@ def main():
             print("No text recognized", file=sys.stderr)
             sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
-        # Step 3: Paste text to original window
         print(f"Recognized: {text}", file=sys.stderr)
+
+        # Step 2.5: If custom prompt mode, process through Chat API
+        custom_prompt = os.environ.get('CUSTOM_PROMPT', '')
+        chat_model = os.environ.get('CHAT_MODEL', 'gpt-4o-mini')
+
+        if custom_prompt:
+            print(f"Custom prompt mode: chat_model={chat_model}, prompt_len={len(custom_prompt)}", file=sys.stderr)
+            api_key = os.environ.get('OPENAI_API_KEY', '')
+            processed = chat_completion(text, custom_prompt, api_key, chat_model)
+            if not processed:
+                sys.exit(EXIT_CHAT_ERROR)
+            text = processed
+            print(f"Processed: {text}", file=sys.stderr)
+
+        # Step 3: Paste text to original window
 
         # Paste text using clipboard + Shift+Insert method
         # This activates the original window before pasting
