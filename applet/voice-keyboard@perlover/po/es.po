@@ -200,6 +200,10 @@ msgstr "GPT-5 (más reciente)"
 msgid "Model for processing text with custom prompts"
 msgstr "Modelo para procesar texto con prompts personalizados"
 
+#. settings-schema.json - custom-prompts-help label
+msgid "Instructions: Click '+' to add. Use AI to process text. Example: Name='Fix Grammar', Prompt='Correct all typos in the following text:'"
+msgstr "Instrucciones: Haga clic en '+' para añadir. Use AI para procesar texto. Ejemplo: Nombre='Corregir gramática', Prompt='Corrige todos los errores en el siguiente texto:'"
+
 #. settings-schema.json
 msgid "Custom Prompts: click '+' to add. Use AI to process recognized text."
 msgstr "Prompts: haga clic en '+' para añadir. Use AI para procesar el texto reconocido."
@@ -213,10 +217,10 @@ msgid "Enabled"
 msgstr "Habilitado"
 
 #. settings-schema.json - custom-prompts column title
-msgid "Menu Name"
-msgstr "Nombre del menú"
+msgid "Menu Name (e.g., 'My Prompt')"
+msgstr "Nombre del menú (ej., 'Mi prompt')"
 
 #. settings-schema.json - custom-prompts column title
-msgid "System Prompt"
-msgstr "Prompt del sistema"
+msgid "System Prompt (AI instructions)"
+msgstr "Prompt del sistema (instrucciones para AI)"
 

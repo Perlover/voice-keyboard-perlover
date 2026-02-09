@@ -200,6 +200,10 @@ msgstr "GPT-5（最新）"
 msgid "Model for processing text with custom prompts"
 msgstr "用于自定义提示词处理文本的模型"
 
+#. settings-schema.json - custom-prompts-help label
+msgid "Instructions: Click '+' to add. Use AI to process text. Example: Name='Fix Grammar', Prompt='Correct all typos in the following text:'"
+msgstr "说明：点击「+」添加。使用AI处理文本。示例：名称=「修正语法」，提示词=「修正以下文本中的所有错误：」"
+
 #. settings-schema.json
 msgid "Custom Prompts: click '+' to add. Use AI to process recognized text."
 msgstr "提示词：点击「+」添加。使用AI处理识别的文本。"
@@ -213,10 +217,10 @@ msgid "Enabled"
 msgstr "启用"
 
 #. settings-schema.json - custom-prompts column title
-msgid "Menu Name"
-msgstr "菜单名称"
+msgid "Menu Name (e.g., 'My Prompt')"
+msgstr "菜单名称（如「我的提示词」）"
 
 #. settings-schema.json - custom-prompts column title
-msgid "System Prompt"
-msgstr "系统提示词"
+msgid "System Prompt (AI instructions)"
+msgstr "系统提示词（AI指令）"
 

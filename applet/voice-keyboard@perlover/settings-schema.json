@@ -82,6 +82,11 @@
         "tooltip": "Model for processing text with custom prompts",
         "dependency": "whisper-mode=openai"
     },
+    "custom-prompts-help": {
+        "type": "label",
+        "description": "Instructions: Click '+' to add. Use AI to process text. Example: Name='Fix Grammar', Prompt='Correct all typos in the following text:'",
+        "dependency": "whisper-mode=openai"
+    },
     "custom-prompts": {
         "type": "list",
         "description": "Custom Prompts: click '+' to add. Use AI to process recognized text.",
@@ -89,8 +94,8 @@
         "dependency": "whisper-mode=openai",
         "columns": [
             {"id": "enabled", "title": "Enabled", "type": "boolean", "default": true},
-            {"id": "name", "title": "Menu Name", "type": "string", "default": ""},
-            {"id": "prompt", "title": "System Prompt", "type": "string", "default": ""}
+            {"id": "name", "title": "Menu Name (e.g., 'My Prompt')", "type": "string", "default": ""},
+            {"id": "prompt", "title": "System Prompt (AI instructions)", "type": "string", "default": ""}
         ],
         "default": []
     }
