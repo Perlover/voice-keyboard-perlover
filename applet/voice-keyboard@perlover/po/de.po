@@ -201,12 +201,12 @@ msgid "Model for processing text with custom prompts"
 msgstr "Modell zur Textverarbeitung mit benutzerdefinierten Prompts"
 
 #. settings-schema.json
-msgid "Custom Prompts"
-msgstr "Benutzerdefinierte Prompts"
+msgid "Custom Prompts: click '+' to add. Use AI to process recognized text."
+msgstr "Prompts: Klicken Sie auf '+' zum Hinzufügen. AI verarbeitet den erkannten Text."
 
 #. settings-schema.json
-msgid "Custom prompts appear in right-click menu and process speech through AI"
-msgstr "Benutzerdefinierte Prompts erscheinen im Kontextmenü und verarbeiten Sprache durch AI"
+msgid "Enabled: toggle prompt. Menu Name: how it appears in right-click menu. System Prompt: instructions for the AI (e.g., 'Translate to French' or 'Fix grammar')."
+msgstr "Aktiviert: Prompt ein-/ausschalten. Menüname: Anzeige im Kontextmenü. System-Prompt: Anweisungen für die AI (z.B. 'Übersetze ins Französische' oder 'Grammatik korrigieren')."
 
 #. settings-schema.json - custom-prompts column title
 msgid "Enabled"
@@ -220,10 +220,3 @@ msgstr "Menüname"
 msgid "System Prompt"
 msgstr "System-Prompt"
 
-#. settings-schema.json - custom-prompts default / applet.js menu
-msgid "My Prompt"
-msgstr "Mein Prompt"
-
-#. settings-schema.json - custom-prompts default
-msgid "You are a helpful assistant. Process the following dictated text:"
-msgstr "Du bist ein hilfreicher Assistent. Verarbeite den folgenden diktierten Text:"

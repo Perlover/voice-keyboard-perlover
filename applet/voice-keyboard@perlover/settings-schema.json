@@ -84,13 +84,13 @@
     },
     "custom-prompts": {
         "type": "list",
-        "description": "Custom Prompts",
-        "tooltip": "Custom prompts appear in right-click menu and process speech through AI",
+        "description": "Custom Prompts: click '+' to add. Use AI to process recognized text.",
+        "tooltip": "Enabled: toggle prompt. Menu Name: how it appears in right-click menu. System Prompt: instructions for the AI (e.g., 'Translate to French' or 'Fix grammar').",
         "dependency": "whisper-mode=openai",
         "columns": [
             {"id": "enabled", "title": "Enabled", "type": "boolean", "default": true},
-            {"id": "name", "title": "Menu Name", "type": "string", "default": "My Prompt"},
-            {"id": "prompt", "title": "System Prompt", "type": "string", "default": "You are a helpful assistant. Process the following dictated text:"}
+            {"id": "name", "title": "Menu Name", "type": "string", "default": ""},
+            {"id": "prompt", "title": "System Prompt", "type": "string", "default": ""}
         ],
         "default": []
     }

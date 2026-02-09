@@ -201,12 +201,12 @@ msgid "Model for processing text with custom prompts"
 msgstr "用于自定义提示词处理文本的模型"
 
 #. settings-schema.json
-msgid "Custom Prompts"
-msgstr "自定义提示词"
+msgid "Custom Prompts: click '+' to add. Use AI to process recognized text."
+msgstr "提示词：点击「+」添加。使用AI处理识别的文本。"
 
 #. settings-schema.json
-msgid "Custom prompts appear in right-click menu and process speech through AI"
-msgstr "自定义提示词显示在右键菜单中，通过AI处理语音"
+msgid "Enabled: toggle prompt. Menu Name: how it appears in right-click menu. System Prompt: instructions for the AI (e.g., 'Translate to French' or 'Fix grammar')."
+msgstr "启用：开关提示词。菜单名称：在右键菜单中的显示名。系统提示词：AI的指令（如「翻译成法语」或「修正语法」）。"
 
 #. settings-schema.json - custom-prompts column title
 msgid "Enabled"
@@ -220,10 +220,3 @@ msgstr "菜单名称"
 msgid "System Prompt"
 msgstr "系统提示词"
 
-#. settings-schema.json - custom-prompts default / applet.js menu
-msgid "My Prompt"
-msgstr "我的提示词"
-
-#. settings-schema.json - custom-prompts default
-msgid "You are a helpful assistant. Process the following dictated text:"
-msgstr "你是一个有用的助手。请处理以下听写文本："
