@@ -207,3 +207,23 @@ msgstr "カスタムプロンプト"
 #. settings-schema.json
 msgid "Custom prompts appear in right-click menu and process speech through AI"
 msgstr "カスタムプロンプトは右クリックメニューに表示され、AIを通じて音声を処理します"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Enabled"
+msgstr "有効"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Menu Name"
+msgstr "メニュー名"
+
+#. settings-schema.json - custom-prompts column title
+msgid "System Prompt"
+msgstr "システムプロンプト"
+
+#. settings-schema.json - custom-prompts default / applet.js menu
+msgid "My Prompt"
+msgstr "マイプロンプト"
+
+#. settings-schema.json - custom-prompts default
+msgid "You are a helpful assistant. Process the following dictated text:"
+msgstr "あなたは親切なアシスタントです。次の口述テキストを処理してください："

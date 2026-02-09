@@ -5,6 +5,7 @@
     "version": "1.7.0",
     "author": "perlover",
     "url": "https://github.com/perlover/voice-keyboard-perlover",
+    "gettext-domain": "voice-keyboard@perlover",
     "cinnamon-version": ["5.8", "6.0", "6.2", "6.4"],
     "last-edited": "1735502400"
 }

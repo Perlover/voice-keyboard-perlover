@@ -207,3 +207,23 @@ msgstr "Пользовательские промпты"
 #. settings-schema.json
 msgid "Custom prompts appear in right-click menu and process speech through AI"
 msgstr "Пользовательские промпты появляются в контекстном меню и обрабатывают речь через AI"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Enabled"
+msgstr "Включено"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Menu Name"
+msgstr "Имя в меню"
+
+#. settings-schema.json - custom-prompts column title
+msgid "System Prompt"
+msgstr "Системный промпт"
+
+#. settings-schema.json - custom-prompts default / applet.js menu
+msgid "My Prompt"
+msgstr "Мой промпт"
+
+#. settings-schema.json - custom-prompts default
+msgid "You are a helpful assistant. Process the following dictated text:"
+msgstr "Вы — полезный помощник. Обработайте следующий надиктованный текст:"

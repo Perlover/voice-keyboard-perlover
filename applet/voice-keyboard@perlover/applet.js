@@ -14,13 +14,9 @@ const Gettext = imports.gettext;
 
 const UUID = "voice-keyboard@perlover";
 
-Gettext.bindtextdomain(UUID, GLib.get_home_dir() + "/.local/share/locale");
-Gettext.bindtextdomain(UUID, "/usr/share/locale");
-
 function _(str) {
-    let translated = Gettext.dgettext(UUID, str);
-    if (translated !== str) return translated;
-    return str;
+    Gettext.bindtextdomain(UUID, "/usr/share/locale");
+    return Gettext.dgettext(UUID, str);
 }
 
 // State constants
@@ -124,7 +120,7 @@ VoiceKeyboardApplet.prototype = {
                 if (!prompt.enabled) continue;
                 hasPrompts = true;
                 var promptItem = new PopupMenu.PopupIconMenuItem(
-                    prompt.name,
+                    _(prompt.name),
                     "accessories-text-editor-symbolic",
                     St.IconType.SYMBOLIC
                 );

@@ -3,6 +3,7 @@ debian/.debhelper/
 debian/voice-keyboard-perlover/
 debian/files
 debian/*.debhelper*
+debian/debhelper-build-stamp
 debian/*.substvars
 debian/*.log
 

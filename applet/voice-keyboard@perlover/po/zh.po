@@ -207,3 +207,23 @@ msgstr "自定义提示词"
 #. settings-schema.json
 msgid "Custom prompts appear in right-click menu and process speech through AI"
 msgstr "自定义提示词显示在右键菜单中，通过AI处理语音"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Enabled"
+msgstr "启用"
+
+#. settings-schema.json - custom-prompts column title
+msgid "Menu Name"
+msgstr "菜单名称"
+
+#. settings-schema.json - custom-prompts column title
+msgid "System Prompt"
+msgstr "系统提示词"
+
+#. settings-schema.json - custom-prompts default / applet.js menu
+msgid "My Prompt"
+msgstr "我的提示词"
+
+#. settings-schema.json - custom-prompts default
+msgid "You are a helpful assistant. Process the following dictated text:"
+msgstr "你是一个有用的助手。请处理以下听写文本："

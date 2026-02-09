@@ -89,8 +89,8 @@
         "dependency": "whisper-mode=openai",
         "columns": [
             {"id": "enabled", "title": "Enabled", "type": "boolean", "default": true},
-            {"id": "name", "title": "Menu Name", "type": "string", "default": "New Prompt"},
-            {"id": "prompt", "title": "System Prompt", "type": "string", "default": ""}
+            {"id": "name", "title": "Menu Name", "type": "string", "default": "My Prompt"},
+            {"id": "prompt", "title": "System Prompt", "type": "string", "default": "You are a helpful assistant. Process the following dictated text:"}
         ],
         "default": []
     }
