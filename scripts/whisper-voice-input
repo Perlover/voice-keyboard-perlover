@@ -247,6 +247,7 @@ def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
         }
         payload = {
             "model": model,
+            "temperature": 0.3,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}

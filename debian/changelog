@@ -1,3 +1,11 @@
+voice-keyboard-perlover (1.7.1-1) noble; urgency=medium
+
+  * Set Chat API temperature to 0.3 for reliable custom prompt execution
+  * Clean up custom prompts UI: empty defaults, descriptive help label
+  * Add descriptive column titles with hints in add-prompt dialog
+
+ -- perlover <perlover@perlover.com>  Sun, 09 Feb 2026 17:15:00 +0100
+
 voice-keyboard-perlover (1.7.0-1) noble; urgency=medium
 
   * Add i18n support: 6 languages (ru, es, de, fr, zh, ja)
