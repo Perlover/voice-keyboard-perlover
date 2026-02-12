@@ -263,9 +263,7 @@ def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
             ]
         }
 
-        if is_reasoning:
-            payload["reasoning_effort"] = "low"
-        else:
+        if not is_reasoning:
             payload["temperature"] = 0.3
 
         print(f"Chat API request: model={model}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
