@@ -1,3 +1,10 @@
+voice-keyboard-perlover (1.7.6-1) noble; urgency=medium
+
+  * Remove GPT-5 Nano and GPT-5 Mini from chat model list (restricted access)
+  * Keep GPT-4o Mini, GPT-4o, and GPT-5.2 as available chat models
+
+ -- perlover <perlover@perlover.com>  Thu, 13 Feb 2026 00:50:00 +0100
+
 voice-keyboard-perlover (1.7.5-1) noble; urgency=medium
 
   * Improve reasoning model output quality by using API default reasoning_effort
