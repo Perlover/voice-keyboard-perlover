@@ -1,3 +1,11 @@
+voice-keyboard-perlover (1.7.3-1) noble; urgency=medium
+
+  * Fix all GPT-5 family models rejected with temperature error
+  * Detect all gpt-5* models as reasoning (gpt-5-mini, gpt-5-nano, gpt-5.2)
+  * Use reasoning_effort=low instead of unsupported temperature parameter
+
+ -- perlover <perlover@perlover.com>  Thu, 13 Feb 2026 00:15:00 +0100
+
 voice-keyboard-perlover (1.7.2-1) noble; urgency=medium
 
   * Update Chat AI model list: add GPT-5 Nano, GPT-5 Mini, GPT-5.2
