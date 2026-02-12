@@ -75,9 +75,11 @@
         "default": "gpt-4o-mini",
         "description": "Chat AI Model",
         "options": {
-            "GPT-4o Mini (fast, economical)": "gpt-4o-mini",
-            "GPT-4o (best quality)": "gpt-4o",
-            "GPT-5 (latest)": "gpt-5"
+            "GPT-4o Mini": "gpt-4o-mini",
+            "GPT-4o": "gpt-4o",
+            "GPT-5 Nano (fast, cheapest)": "gpt-5-nano",
+            "GPT-5 Mini": "gpt-5-mini",
+            "GPT-5.2 (most powerful)": "gpt-5.2"
         },
         "tooltip": "Model for processing text with custom prompts",
         "dependency": "whisper-mode=openai"

@@ -1,3 +1,11 @@
+voice-keyboard-perlover (1.7.2-1) noble; urgency=medium
+
+  * Update Chat AI model list: add GPT-5 Nano, GPT-5 Mini, GPT-5.2
+  * Remove deprecated GPT-5 model (reasoning model incompatible with temperature)
+  * Add reasoning model support: use reasoning_effort instead of temperature for GPT-5.x
+
+ -- perlover <perlover@perlover.com>  Thu, 12 Feb 2026 23:30:00 +0100
+
 voice-keyboard-perlover (1.7.1-1) noble; urgency=medium
 
   * Set Chat API temperature to 0.3 for reliable custom prompt execution

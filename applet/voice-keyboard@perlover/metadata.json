@@ -2,7 +2,7 @@
     "uuid": "voice-keyboard@perlover",
     "name": "Voice Keyboard",
     "description": "Voice input using Whisper (OpenAI or local server)",
-    "version": "1.7.1",
+    "version": "1.7.2",
     "author": "perlover",
     "url": "https://github.com/perlover/voice-keyboard-perlover",
     "gettext-domain": "voice-keyboard@perlover",

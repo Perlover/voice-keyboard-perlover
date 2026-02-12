@@ -230,6 +230,14 @@ def transcribe_local(audio_file, server_url, language="auto"):
         return None
 
 
+def _is_reasoning_model(model):
+    """Check if model is a reasoning model that uses reasoning_effort instead of temperature."""
+    # gpt-5.2, gpt-5.1, etc. are reasoning models (with dot notation)
+    # gpt-5-mini, gpt-5-nano are standard chat models (with dash notation)
+    import re
+    return bool(re.match(r'^gpt-5\.\d', model))
+
+
 def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
     """
     Process text through OpenAI Chat API with a custom system prompt.
@@ -245,14 +253,21 @@ def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json"
         }
+
+        is_reasoning = _is_reasoning_model(model)
+
         payload = {
             "model": model,
-            "temperature": 0.3,
             "messages": [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": text}
             ]
         }
+
+        if is_reasoning:
+            payload["reasoning_effort"] = "none"
+        else:
+            payload["temperature"] = 0.3
 
         print(f"Chat API request: model={model}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
         start_time = time.time()
