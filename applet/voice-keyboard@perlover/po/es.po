@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
-"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
+"PO-Revision-Date: 2026-02-24 00:00+0000\n"
 "Last-Translator: perlover <perlover@perlover.com>\n"
 "Language-Team: Spanish\n"
 "Language: es\n"
@@ -223,4 +223,92 @@ msgstr "Nombre del menú (ej., 'Mi prompt')"
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
 msgstr "Prompt del sistema (instrucciones para AI)"
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr "Exportar configuración al portapapeles"
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr "Importar configuración del portapapeles"
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr "Importar configuración"
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr "Versión: %s"
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr "Fecha: %s"
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr "Cantidad de ajustes: %d"
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr "Todos los ajustes actuales serán sobrescritos. ¿Continuar?"
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr "Cancelar"
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr "Importar"
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr "Advertencia: los datos exportados contienen su clave API. ¡Manténgala segura!"
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr "No se pudo exportar la configuración"
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr "Configuración exportada al portapapeles"
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr "No se pudo copiar al portapapeles"
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr "Exportar configuración a archivo"
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr "Configuración exportada a archivo"
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr "No se pudo guardar el archivo: "
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr "El portapapeles está vacío o no se puede leer"
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr "Formato de configuración inválido en el portapapeles"
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr "Configuración importada exitosamente (%d aplicados)"
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr "Importar configuración desde archivo"
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr "No se pudo leer el archivo"
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
+msgstr "Formato de archivo de configuración inválido"
 

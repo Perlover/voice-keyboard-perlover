@@ -147,6 +147,29 @@ VoiceKeyboardApplet.prototype = {
             Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
         }));
         this.menu.addMenuItem(settingsItem);
+
+        // Export/Import via clipboard — quick access
+        this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+
+        var exportItem = new PopupMenu.PopupIconMenuItem(
+            _("Export Settings to Clipboard"),
+            "edit-copy-symbolic",
+            St.IconType.SYMBOLIC
+        );
+        exportItem.connect('activate', Lang.bind(this, function() {
+            this.onExportToClipboard();
+        }));
+        this.menu.addMenuItem(exportItem);
+
+        var importItem = new PopupMenu.PopupIconMenuItem(
+            _("Import Settings from Clipboard"),
+            "edit-paste-symbolic",
+            St.IconType.SYMBOLIC
+        );
+        importItem.connect('activate', Lang.bind(this, function() {
+            this.onImportFromClipboard();
+        }));
+        this.menu.addMenuItem(importItem);
     },
 
     /**
@@ -827,6 +850,332 @@ VoiceKeyboardApplet.prototype = {
             return Clutter.EVENT_STOP;
         }
         return Clutter.EVENT_PROPAGATE;
+    },
+
+    /**
+     * Run an async command and capture stdout
+     */
+    _runCommandAsync: function(argv, callback) {
+        try {
+            var [success, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes(
+                null, argv, null,
+                GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
+                null
+            );
+            if (success) {
+                var stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
+                stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
+
+                var stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
+                stderrChannel.set_flags(GLib.IOFlags.NONBLOCK);
+
+                GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
+                    var output = '';
+                    try {
+                        var [readStatus, data] = stdoutChannel.read_to_end();
+                        if (data) output = data.toString().trim();
+                        stdoutChannel.shutdown(false);
+                    } catch (e) { /* ignore */ }
+
+                    try { stderrChannel.shutdown(false); } catch (e) { /* ignore */ }
+
+                    GLib.spawn_close_pid(pid);
+                    var exitCode = (status >> 8) & 0xFF;
+                    callback(exitCode === 0, output);
+                }));
+            } else {
+                callback(false, '');
+            }
+        } catch (e) {
+            global.logError("[voice-keyboard] _runCommandAsync error: " + e);
+            callback(false, '');
+        }
+    },
+
+    /**
+     * Build export data object from current settings
+     * Dynamically reads settings-schema.json to include all data keys
+     */
+    _buildExportData: function() {
+        var schemaPath = this.metadata.path + '/settings-schema.json';
+        var [ok, contents] = GLib.file_get_contents(schemaPath);
+        if (!ok) {
+            global.logError("[voice-keyboard] Cannot read settings-schema.json");
+            return null;
+        }
+
+        var schema = JSON.parse(contents);
+        var skipTypes = ['label', 'header', 'separator', 'button'];
+        var settings = {};
+
+        for (var key in schema) {
+            if (schema.hasOwnProperty(key)) {
+                var entry = schema[key];
+                if (skipTypes.indexOf(entry.type) >= 0) continue;
+                try {
+                    settings[key] = this.settings.getValue(key);
+                } catch (e) {
+                    this._debug("Cannot read setting: " + key + " - " + e);
+                }
+            }
+        }
+
+        return {
+            "format": "voice-keyboard-settings",
+            "version": this.metadata.version || "1.8.0",
+            "exported": new Date().toISOString(),
+            "settings": settings
+        };
+    },
+
+    /**
+     * Validate import data JSON text
+     * Returns parsed object or null if invalid
+     */
+    _validateImportData: function(jsonText) {
+        try {
+            var data = JSON.parse(jsonText);
+            if (data.format !== "voice-keyboard-settings") {
+                return null;
+            }
+            if (!data.settings || typeof data.settings !== 'object') {
+                return null;
+            }
+            return data;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    /**
+     * Apply imported settings data
+     * Only applies keys that exist in current schema
+     */
+    _applyImportData: function(importData) {
+        var schemaPath = this.metadata.path + '/settings-schema.json';
+        var [ok, contents] = GLib.file_get_contents(schemaPath);
+        if (!ok) return 0;
+
+        var schema = JSON.parse(contents);
+        var skipTypes = ['label', 'header', 'separator', 'button'];
+        var applied = 0;
+
+        for (var key in importData.settings) {
+            if (importData.settings.hasOwnProperty(key)) {
+                if (!schema.hasOwnProperty(key)) continue;
+                if (skipTypes.indexOf(schema[key].type) >= 0) continue;
+                try {
+                    this.settings.setValue(key, importData.settings[key]);
+                    applied++;
+                } catch (e) {
+                    this._debug("Cannot set setting: " + key + " - " + e);
+                }
+            }
+        }
+
+        return applied;
+    },
+
+    /**
+     * Show confirmation dialog before importing settings
+     */
+    _showImportConfirmDialog: function(importData, onConfirm) {
+        var dialog = new ModalDialog.ModalDialog();
+
+        var contentBox = new St.BoxLayout({
+            vertical: true,
+            style_class: 'modal-dialog-content-box'
+        });
+
+        var titleLabel = new St.Label({
+            text: _("Import Settings"),
+            style: 'font-weight: bold; font-size: 14px; margin-bottom: 10px;'
+        });
+        contentBox.add(titleLabel);
+
+        var settingsCount = Object.keys(importData.settings).length;
+        var infoText = _("Version: %s").replace("%s", importData.version || "?") + "\n" +
+                       _("Date: %s").replace("%s", importData.exported || "?") + "\n" +
+                       _("Settings count: %d").replace("%d", settingsCount);
+
+        var infoLabel = new St.Label({
+            text: infoText,
+            style: 'margin-bottom: 10px;'
+        });
+        contentBox.add(infoLabel);
+
+        var warningLabel = new St.Label({
+            text: _("All current settings will be overwritten. Continue?"),
+            style: 'color: #ff8800; margin-bottom: 10px;'
+        });
+        contentBox.add(warningLabel);
+
+        dialog.contentLayout.add(contentBox);
+
+        dialog.setButtons([
+            {
+                label: _("Cancel"),
+                action: Lang.bind(this, function() {
+                    dialog.close();
+                })
+            },
+            {
+                label: _("Import"),
+                action: Lang.bind(this, function() {
+                    dialog.close();
+                    onConfirm();
+                })
+            }
+        ]);
+
+        dialog.open();
+    },
+
+    /**
+     * Check if export data contains API key and show warning
+     */
+    _checkApiKeyWarning: function(exportData) {
+        if (exportData.settings['openai-api-key'] && exportData.settings['openai-api-key'].trim() !== '') {
+            Main.notify(
+                "Voice Keyboard Perlover",
+                _("Warning: exported data contains your API key. Keep it secure!")
+            );
+        }
+    },
+
+    /**
+     * Export settings to clipboard (called from settings panel button and right-click menu)
+     */
+    onExportToClipboard: function() {
+        var exportData = this._buildExportData();
+        if (!exportData) {
+            Main.notify("Voice Keyboard Perlover", _("Failed to export settings"));
+            return;
+        }
+
+        var jsonText = JSON.stringify(exportData, null, 2);
+        var tmpFile = '/tmp/voice-keyboard-export.json';
+
+        try {
+            GLib.file_set_contents(tmpFile, jsonText);
+        } catch (e) {
+            Main.notify("Voice Keyboard Perlover", _("Failed to export settings"));
+            return;
+        }
+
+        this._runCommandAsync(
+            ['bash', '-c', 'xclip -selection clipboard < ' + tmpFile + ' && rm -f ' + tmpFile],
+            Lang.bind(this, function(success) {
+                // Clean up temp file in case of failure
+                try { GLib.unlink(tmpFile); } catch (e) { /* ignore */ }
+
+                if (success) {
+                    this._checkApiKeyWarning(exportData);
+                    Main.notify("Voice Keyboard Perlover", _("Settings exported to clipboard"));
+                } else {
+                    Main.notify("Voice Keyboard Perlover", _("Failed to copy to clipboard"));
+                }
+            })
+        );
+    },
+
+    /**
+     * Export settings to a file via zenity save dialog
+     */
+    onExportToFile: function() {
+        var exportData = this._buildExportData();
+        if (!exportData) {
+            Main.notify("Voice Keyboard Perlover", _("Failed to export settings"));
+            return;
+        }
+
+        this._runCommandAsync(
+            ['zenity', '--file-selection', '--save', '--confirm-overwrite',
+             '--title=' + _("Export Settings to File"),
+             '--filename=voice-keyboard-settings.json',
+             '--file-filter=JSON files (*.json)|*.json',
+             '--file-filter=All files|*'],
+            Lang.bind(this, function(success, filePath) {
+                if (!success || !filePath) return;
+
+                var jsonText = JSON.stringify(exportData, null, 2);
+                try {
+                    GLib.file_set_contents(filePath, jsonText);
+                    this._checkApiKeyWarning(exportData);
+                    Main.notify("Voice Keyboard Perlover", _("Settings exported to file"));
+                } catch (e) {
+                    Main.notify("Voice Keyboard Perlover", _("Failed to save file: ") + e.message);
+                }
+            })
+        );
+    },
+
+    /**
+     * Import settings from clipboard
+     */
+    onImportFromClipboard: function() {
+        this._runCommandAsync(
+            ['xclip', '-selection', 'clipboard', '-o'],
+            Lang.bind(this, function(success, clipText) {
+                if (!success || !clipText) {
+                    Main.notify("Voice Keyboard Perlover", _("Clipboard is empty or cannot be read"));
+                    return;
+                }
+
+                var importData = this._validateImportData(clipText);
+                if (!importData) {
+                    Main.notify("Voice Keyboard Perlover", _("Invalid settings format in clipboard"));
+                    return;
+                }
+
+                this._showImportConfirmDialog(importData, Lang.bind(this, function() {
+                    var applied = this._applyImportData(importData);
+                    Main.notify("Voice Keyboard Perlover",
+                        _("Settings imported successfully (%d applied)").replace("%d", applied));
+                }));
+            })
+        );
+    },
+
+    /**
+     * Import settings from file via zenity open dialog
+     */
+    onImportFromFile: function() {
+        this._runCommandAsync(
+            ['zenity', '--file-selection',
+             '--title=' + _("Import Settings from File"),
+             '--file-filter=JSON files (*.json)|*.json',
+             '--file-filter=All files|*'],
+            Lang.bind(this, function(success, filePath) {
+                if (!success || !filePath) return;
+
+                var [ok, contents] = [false, ''];
+                try {
+                    [ok, contents] = GLib.file_get_contents(filePath);
+                } catch (e) {
+                    Main.notify("Voice Keyboard Perlover", _("Failed to read file"));
+                    return;
+                }
+
+                if (!ok) {
+                    Main.notify("Voice Keyboard Perlover", _("Failed to read file"));
+                    return;
+                }
+
+                var jsonText = contents.toString();
+                var importData = this._validateImportData(jsonText);
+                if (!importData) {
+                    Main.notify("Voice Keyboard Perlover", _("Invalid settings file format"));
+                    return;
+                }
+
+                this._showImportConfirmDialog(importData, Lang.bind(this, function() {
+                    var applied = this._applyImportData(importData);
+                    Main.notify("Voice Keyboard Perlover",
+                        _("Settings imported successfully (%d applied)").replace("%d", applied));
+                }));
+            })
+        );
     },
 
     on_applet_removed_from_panel: function() {

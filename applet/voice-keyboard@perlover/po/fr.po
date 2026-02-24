@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
-"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
+"PO-Revision-Date: 2026-02-24 00:00+0000\n"
 "Last-Translator: perlover <perlover@perlover.com>\n"
 "Language-Team: French\n"
 "Language: fr\n"
@@ -223,4 +223,92 @@ msgstr "Nom du menu (ex. « Mon prompt »)"
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
 msgstr "Prompt système (instructions pour l'AI)"
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr "Exporter les paramètres dans le presse-papiers"
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr "Importer les paramètres du presse-papiers"
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr "Importer les paramètres"
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr "Version : %s"
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr "Date : %s"
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr "Nombre de paramètres : %d"
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr "Tous les paramètres actuels seront écrasés. Continuer ?"
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr "Annuler"
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr "Importer"
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr "Attention : les données exportées contiennent votre clé API. Conservez-la en sécurité !"
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr "Échec de l'exportation des paramètres"
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr "Paramètres exportés dans le presse-papiers"
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr "Échec de la copie dans le presse-papiers"
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr "Exporter les paramètres dans un fichier"
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr "Paramètres exportés dans un fichier"
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr "Impossible d'enregistrer le fichier : "
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr "Le presse-papiers est vide ou ne peut pas être lu"
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr "Format de paramètres invalide dans le presse-papiers"
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr "Paramètres importés avec succès (%d appliqués)"
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr "Importer les paramètres depuis un fichier"
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr "Impossible de lire le fichier"
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
+msgstr "Format de fichier de paramètres invalide"
 

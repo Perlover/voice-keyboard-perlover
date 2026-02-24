@@ -6,9 +6,9 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -223,5 +223,93 @@ msgstr ""
 
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
+msgstr ""
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr ""
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr ""
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr ""
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr ""
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr ""
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr ""
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr ""
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr ""
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr ""
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr ""
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr ""
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr ""
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr ""
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr ""
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr ""
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr ""
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
 msgstr ""
 

@@ -1,3 +1,11 @@
+voice-keyboard-perlover (1.8.0-1) noble; urgency=medium
+
+  * Add export/import settings feature (JSON file and clipboard)
+  * Settings panel buttons and right-click menu for quick access
+  * Universal mechanism: automatically includes all current and future settings
+
+ -- perlover <perlover@perlover.com>  Mon, 24 Feb 2026 12:00:00 +0100
+
 voice-keyboard-perlover (1.7.6-1) noble; urgency=medium
 
   * Remove GPT-5 Nano and GPT-5 Mini from chat model list (restricted access)

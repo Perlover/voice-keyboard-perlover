@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
-"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
+"PO-Revision-Date: 2026-02-24 00:00+0000\n"
 "Last-Translator: perlover <perlover@perlover.com>\n"
 "Language-Team: Russian\n"
 "Language: ru\n"
@@ -223,4 +223,92 @@ msgstr "Имя в меню (напр., «Мой промпт»)"
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
 msgstr "Системный промпт (инструкции для AI)"
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr "Экспорт настроек в буфер обмена"
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr "Импорт настроек из буфера обмена"
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr "Импорт настроек"
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr "Версия: %s"
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr "Дата: %s"
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr "Количество настроек: %d"
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr "Все текущие настройки будут перезаписаны. Продолжить?"
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr "Отмена"
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr "Импорт"
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr "Внимание: экспортированные данные содержат ваш API-ключ. Храните их в безопасности!"
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr "Не удалось экспортировать настройки"
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr "Настройки скопированы в буфер обмена"
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr "Не удалось скопировать в буфер обмена"
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr "Экспорт настроек в файл"
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr "Настройки сохранены в файл"
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr "Не удалось сохранить файл: "
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr "Буфер обмена пуст или не может быть прочитан"
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr "Неверный формат настроек в буфере обмена"
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr "Настройки успешно импортированы (применено: %d)"
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr "Импорт настроек из файла"
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr "Не удалось прочитать файл"
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
+msgstr "Неверный формат файла настроек"
 

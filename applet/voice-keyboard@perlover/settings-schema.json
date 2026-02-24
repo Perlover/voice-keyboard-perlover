@@ -98,5 +98,33 @@
             {"id": "prompt", "title": "System Prompt (AI instructions)", "type": "string", "default": ""}
         ],
         "default": []
+    },
+    "export-import-header": {
+        "type": "header",
+        "description": "Export / Import Settings"
+    },
+    "export-to-file": {
+        "type": "button",
+        "description": "Export Settings to File...",
+        "callback": "onExportToFile",
+        "tooltip": "Save all settings to a JSON file"
+    },
+    "export-to-clipboard": {
+        "type": "button",
+        "description": "Export Settings to Clipboard",
+        "callback": "onExportToClipboard",
+        "tooltip": "Copy all settings to clipboard as JSON"
+    },
+    "import-from-file": {
+        "type": "button",
+        "description": "Import Settings from File...",
+        "callback": "onImportFromFile",
+        "tooltip": "Load settings from a JSON file"
+    },
+    "import-from-clipboard": {
+        "type": "button",
+        "description": "Import Settings from Clipboard",
+        "callback": "onImportFromClipboard",
+        "tooltip": "Paste settings from clipboard JSON"
     }
 }

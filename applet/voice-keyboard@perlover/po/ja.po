@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
-"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
+"PO-Revision-Date: 2026-02-24 00:00+0000\n"
 "Last-Translator: perlover <perlover@perlover.com>\n"
 "Language-Team: Japanese\n"
 "Language: ja\n"
@@ -223,4 +223,92 @@ msgstr "メニュー名（例：「マイプロンプト」）"
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
 msgstr "システムプロンプト（AI指示）"
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr "設定をクリップボードにエクスポート"
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr "クリップボードから設定をインポート"
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr "設定のインポート"
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr "バージョン：%s"
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr "日付：%s"
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr "設定数：%d"
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr "すべての現在の設定が上書きされます。続行しますか？"
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr "キャンセル"
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr "インポート"
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr "警告：エクスポートされたデータにはAPIキーが含まれています。安全に保管してください！"
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr "設定のエクスポートに失敗しました"
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr "設定をクリップボードにエクスポートしました"
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr "クリップボードへのコピーに失敗しました"
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr "設定をファイルにエクスポート"
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr "設定をファイルにエクスポートしました"
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr "ファイルの保存に失敗しました："
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr "クリップボードが空か、読み取れません"
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr "クリップボードの設定形式が無効です"
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr "設定のインポートに成功しました（%d 件適用）"
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr "ファイルから設定をインポート"
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr "ファイルの読み取りに失敗しました"
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
+msgstr "設定ファイルの形式が無効です"
 

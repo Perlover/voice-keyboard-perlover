@@ -4,10 +4,10 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: voice-keyboard@perlover 1.6.1\n"
+"Project-Id-Version: voice-keyboard@perlover 1.8.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-02-09 00:00+0000\n"
-"PO-Revision-Date: 2026-02-09 00:00+0000\n"
+"POT-Creation-Date: 2026-02-24 00:00+0000\n"
+"PO-Revision-Date: 2026-02-24 00:00+0000\n"
 "Last-Translator: perlover <perlover@perlover.com>\n"
 "Language-Team: Chinese (Simplified)\n"
 "Language: zh_CN\n"
@@ -223,4 +223,92 @@ msgstr "菜单名称（如「我的提示词」）"
 #. settings-schema.json - custom-prompts column title
 msgid "System Prompt (AI instructions)"
 msgstr "系统提示词（AI指令）"
+
+#. applet.js - export/import menu
+msgid "Export Settings to Clipboard"
+msgstr "导出设置到剪贴板"
+
+#. applet.js - export/import menu
+msgid "Import Settings from Clipboard"
+msgstr "从剪贴板导入设置"
+
+#. applet.js - import dialog title
+msgid "Import Settings"
+msgstr "导入设置"
+
+#. applet.js - import dialog info
+msgid "Version: %s"
+msgstr "版本：%s"
+
+#. applet.js - import dialog info
+msgid "Date: %s"
+msgstr "日期：%s"
+
+#. applet.js - import dialog info
+msgid "Settings count: %d"
+msgstr "设置数量：%d"
+
+#. applet.js - import dialog warning
+msgid "All current settings will be overwritten. Continue?"
+msgstr "所有当前设置将被覆盖。是否继续？"
+
+#. applet.js - import dialog button
+msgid "Cancel"
+msgstr "取消"
+
+#. applet.js - import dialog button
+msgid "Import"
+msgstr "导入"
+
+#. applet.js - export notification
+msgid "Warning: exported data contains your API key. Keep it secure!"
+msgstr "警告：导出的数据包含您的API密钥。请妥善保管！"
+
+#. applet.js - export notification
+msgid "Failed to export settings"
+msgstr "导出设置失败"
+
+#. applet.js - export notification
+msgid "Settings exported to clipboard"
+msgstr "设置已导出到剪贴板"
+
+#. applet.js - export notification
+msgid "Failed to copy to clipboard"
+msgstr "复制到剪贴板失败"
+
+#. applet.js - zenity dialog title
+msgid "Export Settings to File"
+msgstr "导出设置到文件"
+
+#. applet.js - export notification
+msgid "Settings exported to file"
+msgstr "设置已导出到文件"
+
+#. applet.js - export notification
+msgid "Failed to save file: "
+msgstr "保存文件失败："
+
+#. applet.js - import notification
+msgid "Clipboard is empty or cannot be read"
+msgstr "剪贴板为空或无法读取"
+
+#. applet.js - import notification
+msgid "Invalid settings format in clipboard"
+msgstr "剪贴板中的设置格式无效"
+
+#. applet.js - import notification
+msgid "Settings imported successfully (%d applied)"
+msgstr "设置导入成功（已应用 %d 项）"
+
+#. applet.js - zenity dialog title
+msgid "Import Settings from File"
+msgstr "从文件导入设置"
+
+#. applet.js - import notification
+msgid "Failed to read file"
+msgstr "读取文件失败"
+
+#. applet.js - import notification
+msgid "Invalid settings file format"
+msgstr "设置文件格式无效"
 
