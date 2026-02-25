@@ -224,6 +224,34 @@ msgstr "Menüname (z.B. 'Mein Prompt')"
 msgid "System Prompt (AI instructions)"
 msgstr "System-Prompt (AI-Anweisungen)"
 
+#. settings-schema.json - export/import header
+msgid "Export / Import Settings"
+msgstr "Einstellungen exportieren / importieren"
+
+#. settings-schema.json - export button
+msgid "Export Settings to File..."
+msgstr "Einstellungen in Datei exportieren..."
+
+#. settings-schema.json - export button tooltip
+msgid "Save all settings to a JSON file"
+msgstr "Alle Einstellungen in eine JSON-Datei speichern"
+
+#. settings-schema.json - export button tooltip
+msgid "Copy all settings to clipboard as JSON"
+msgstr "Alle Einstellungen als JSON in die Zwischenablage kopieren"
+
+#. settings-schema.json - import button
+msgid "Import Settings from File..."
+msgstr "Einstellungen aus Datei importieren..."
+
+#. settings-schema.json - import button tooltip
+msgid "Load settings from a JSON file"
+msgstr "Einstellungen aus einer JSON-Datei laden"
+
+#. settings-schema.json - import button tooltip
+msgid "Paste settings from clipboard JSON"
+msgstr "Einstellungen aus JSON in der Zwischenablage einfügen"
+
 #. applet.js - export/import menu
 msgid "Export Settings to Clipboard"
 msgstr "Einstellungen in Zwischenablage exportieren"

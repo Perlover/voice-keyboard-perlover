@@ -224,6 +224,34 @@ msgstr "Имя в меню (напр., «Мой промпт»)"
 msgid "System Prompt (AI instructions)"
 msgstr "Системный промпт (инструкции для AI)"
 
+#. settings-schema.json - export/import header
+msgid "Export / Import Settings"
+msgstr "Экспорт / Импорт настроек"
+
+#. settings-schema.json - export button
+msgid "Export Settings to File..."
+msgstr "Экспорт настроек в файл..."
+
+#. settings-schema.json - export button tooltip
+msgid "Save all settings to a JSON file"
+msgstr "Сохранить все настройки в JSON-файл"
+
+#. settings-schema.json - export button tooltip
+msgid "Copy all settings to clipboard as JSON"
+msgstr "Скопировать все настройки в буфер обмена как JSON"
+
+#. settings-schema.json - import button
+msgid "Import Settings from File..."
+msgstr "Импорт настроек из файла..."
+
+#. settings-schema.json - import button tooltip
+msgid "Load settings from a JSON file"
+msgstr "Загрузить настройки из JSON-файла"
+
+#. settings-schema.json - import button tooltip
+msgid "Paste settings from clipboard JSON"
+msgstr "Вставить настройки из JSON в буфере обмена"
+
 #. applet.js - export/import menu
 msgid "Export Settings to Clipboard"
 msgstr "Экспорт настроек в буфер обмена"

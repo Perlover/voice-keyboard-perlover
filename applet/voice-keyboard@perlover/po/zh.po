@@ -224,6 +224,34 @@ msgstr "菜单名称（如「我的提示词」）"
 msgid "System Prompt (AI instructions)"
 msgstr "系统提示词（AI指令）"
 
+#. settings-schema.json - export/import header
+msgid "Export / Import Settings"
+msgstr "导出 / 导入设置"
+
+#. settings-schema.json - export button
+msgid "Export Settings to File..."
+msgstr "导出设置到文件..."
+
+#. settings-schema.json - export button tooltip
+msgid "Save all settings to a JSON file"
+msgstr "将所有设置保存到 JSON 文件"
+
+#. settings-schema.json - export button tooltip
+msgid "Copy all settings to clipboard as JSON"
+msgstr "将所有设置以 JSON 格式复制到剪贴板"
+
+#. settings-schema.json - import button
+msgid "Import Settings from File..."
+msgstr "从文件导入设置..."
+
+#. settings-schema.json - import button tooltip
+msgid "Load settings from a JSON file"
+msgstr "从 JSON 文件加载设置"
+
+#. settings-schema.json - import button tooltip
+msgid "Paste settings from clipboard JSON"
+msgstr "从剪贴板的 JSON 粘贴设置"
+
 #. applet.js - export/import menu
 msgid "Export Settings to Clipboard"
 msgstr "导出设置到剪贴板"

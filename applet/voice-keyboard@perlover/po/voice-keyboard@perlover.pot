@@ -225,6 +225,34 @@ msgstr ""
 msgid "System Prompt (AI instructions)"
 msgstr ""
 
+#. settings-schema.json - export/import header
+msgid "Export / Import Settings"
+msgstr ""
+
+#. settings-schema.json - export button
+msgid "Export Settings to File..."
+msgstr ""
+
+#. settings-schema.json - export button tooltip
+msgid "Save all settings to a JSON file"
+msgstr ""
+
+#. settings-schema.json - export button tooltip
+msgid "Copy all settings to clipboard as JSON"
+msgstr ""
+
+#. settings-schema.json - import button
+msgid "Import Settings from File..."
+msgstr ""
+
+#. settings-schema.json - import button tooltip
+msgid "Load settings from a JSON file"
+msgstr ""
+
+#. settings-schema.json - import button tooltip
+msgid "Paste settings from clipboard JSON"
+msgstr ""
+
 #. applet.js - export/import menu
 msgid "Export Settings to Clipboard"
 msgstr ""

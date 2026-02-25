@@ -224,6 +224,34 @@ msgstr "メニュー名（例：「マイプロンプト」）"
 msgid "System Prompt (AI instructions)"
 msgstr "システムプロンプト（AI指示）"
 
+#. settings-schema.json - export/import header
+msgid "Export / Import Settings"
+msgstr "設定のエクスポート / インポート"
+
+#. settings-schema.json - export button
+msgid "Export Settings to File..."
+msgstr "設定をファイルにエクスポート..."
+
+#. settings-schema.json - export button tooltip
+msgid "Save all settings to a JSON file"
+msgstr "すべての設定を JSON ファイルに保存"
+
+#. settings-schema.json - export button tooltip
+msgid "Copy all settings to clipboard as JSON"
+msgstr "すべての設定を JSON としてクリップボードにコピー"
+
+#. settings-schema.json - import button
+msgid "Import Settings from File..."
+msgstr "ファイルから設定をインポート..."
+
+#. settings-schema.json - import button tooltip
+msgid "Load settings from a JSON file"
+msgstr "JSON ファイルから設定を読み込む"
+
+#. settings-schema.json - import button tooltip
+msgid "Paste settings from clipboard JSON"
+msgstr "クリップボードの JSON から設定を貼り付け"
+
 #. applet.js - export/import menu
 msgid "Export Settings to Clipboard"
 msgstr "設定をクリップボードにエクスポート"
