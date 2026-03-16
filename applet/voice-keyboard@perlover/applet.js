@@ -592,11 +592,16 @@ VoiceKeyboardApplet.prototype = {
                 this.recordingProcess = { pid: pid };
                 this._debug("Script spawned: pid=" + pid + ", customPrompt=" + (this._activeCustomPrompt ? this._activeCustomPrompt.name : "none"));
 
+                // stdin не используется — закрываем сразу чтобы не утекал fd
+                GLib.close(stdin_fd);
+
                 var stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
                 stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
+                stdoutChannel.set_close_on_unref(true);
 
                 var stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
                 stderrChannel.set_flags(GLib.IOFlags.NONBLOCK);
+                stderrChannel.set_close_on_unref(true);
 
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
                     this._debug("child_watch callback: pid=" + pid + ", status=" + status + ", state=" + this.currentState + ", customPrompt=" + (this._activeCustomPrompt ? this._activeCustomPrompt.name : "none"));
@@ -863,11 +868,16 @@ VoiceKeyboardApplet.prototype = {
                 null
             );
             if (success) {
+                // stdin не используется — закрываем сразу чтобы не утекал fd
+                GLib.close(stdin_fd);
+
                 var stdoutChannel = GLib.IOChannel.unix_new(stdout_fd);
                 stdoutChannel.set_flags(GLib.IOFlags.NONBLOCK);
+                stdoutChannel.set_close_on_unref(true);
 
                 var stderrChannel = GLib.IOChannel.unix_new(stderr_fd);
                 stderrChannel.set_flags(GLib.IOFlags.NONBLOCK);
+                stderrChannel.set_close_on_unref(true);
 
                 GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, status) {
                     var output = '';

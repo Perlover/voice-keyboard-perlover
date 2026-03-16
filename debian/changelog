@@ -1,3 +1,11 @@
+voice-keyboard-perlover (1.8.1-1) noble; urgency=medium
+
+  * Fix file descriptor leak causing "Too many open files" after multiple dictations
+  * Close unused stdin_fd immediately after spawning child process
+  * Set close_on_unref on stdout/stderr IOChannels to prevent fd leaks
+
+ -- perlover <perlover@perlover.com>  Mon, 16 Mar 2026 12:00:00 +0100
+
 voice-keyboard-perlover (1.8.0-1) noble; urgency=medium
 
   * Add export/import settings feature (JSON file and clipboard)
