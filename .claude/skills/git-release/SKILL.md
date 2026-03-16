@@ -1,6 +1,6 @@
 ---
 name: git-release
-description: "Git commit and release conventions. Use when committing code, creating releases, bumping versions, pushing to GitHub, or updating changelog. Covers commit messages, versioning, debian/changelog format, and GitHub remote detection."
+description: "PROACTIVE: Git commit and release conventions. Use when committing code, creating releases, bumping versions, pushing to GitHub, or updating changelog. Covers commit messages, versioning, debian/changelog format, GitHub remote detection, and annotated tags. Russian triggers: коммит, релиз, версия, пуш, GitHub, увеличить версию, сделать релиз."
 ---
 
 # Git Release Conventions
