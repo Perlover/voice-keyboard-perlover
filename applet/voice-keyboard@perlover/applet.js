@@ -33,11 +33,14 @@ const EXIT_TRANSCRIPTION_ERROR = 3;
 const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
 const EXIT_CHAT_ERROR = 6;
+const EXIT_PASTE_ERROR = 7;
 
-// Watchdog timeout for STATE_PROCESSING (45 seconds)
-// Python script has 10s connect + 30s read timeout = 40s max
-// Watchdog is safety net in case script hangs
-const PROCESSING_WATCHDOG_MS = 45000;
+// Watchdog timeout for STATE_PROCESSING.
+// Python retries transient network errors up to 3× (10s connect + 30s read)
+// plus 1s+3s backoff between attempts → ~124s worst case for Whisper alone.
+// Use 150s standard / 240s for custom prompt mode (adds Chat API retries).
+const PROCESSING_WATCHDOG_MS = 150000;
+const PROCESSING_WATCHDOG_CUSTOM_PROMPT_MS = 240000;
 
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
@@ -66,6 +69,15 @@ VoiceKeyboardApplet.prototype = {
         this.recordingProcess = null;
         this.errorOverlay = null;
         this._activeCustomPrompt = null;
+
+        // Retry context: preserved artifacts from the last failed run so the
+        // user can re-send the same audio or the same recognized text instead
+        // of dictating again. Populated by child_watch, consumed by retry UI.
+        //   audioFile      — path to preserved OGG (transcription retry)
+        //   textFile       — path to preserved txt (chat-only retry)
+        //   customPrompt   — original prompt data (for chat retry reuse)
+        //   exitCode       — EXIT_TRANSCRIPTION_ERROR or EXIT_CHAT_ERROR
+        this._retryContext = null;
 
         // Bind settings
         this.settings.bind("whisper-mode", "whisperMode", Lang.bind(this, this._rebuildMenu));
@@ -402,6 +414,135 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
+     * Delete any preserved retry artifacts from disk and clear retry context.
+     * Called when: new recording starts, user cancels retry, successful run,
+     * non-retryable error, applet unload.
+     */
+    _clearRetryContext: function() {
+        if (!this._retryContext) return;
+        var ctx = this._retryContext;
+        this._retryContext = null;
+
+        var files = [];
+        if (ctx.audioFile) files.push(ctx.audioFile);
+        if (ctx.textFile) files.push(ctx.textFile);
+        for (var i = 0; i < files.length; i++) {
+            var path = files[i];
+            try {
+                var file = Gio.File.new_for_path(path);
+                if (file.query_exists(null)) {
+                    file.delete(null);
+                    this._debug("Cleaned up retry artifact: " + path);
+                }
+            } catch (e) {
+                this._debug("Cannot delete retry artifact " + path + ": " + e);
+            }
+        }
+    },
+
+    /**
+     * Show a modal dialog offering to retry the last failed run using the
+     * preserved audio (transcription retry) or preserved text (chat retry).
+     * Two buttons: Retry / Cancel. Cancel wipes the preserved artifact.
+     */
+    showRetryDialog: function() {
+        if (!this._retryContext) {
+            // No preserved artifact — fall back to plain error dialog
+            this.showErrorDialog();
+            return;
+        }
+
+        var dialog = new ModalDialog.ModalDialog();
+
+        var contentBox = new St.BoxLayout({
+            vertical: true,
+            style_class: 'modal-dialog-content-box'
+        });
+
+        var titleText = (this._retryContext.exitCode === EXIT_CHAT_ERROR)
+            ? _("AI chat processing failed")
+            : _("Speech was not recognized");
+
+        var titleLabel = new St.Label({
+            text: titleText,
+            style: 'font-weight: bold; font-size: 14px; margin-bottom: 10px;'
+        });
+        contentBox.add(titleLabel);
+
+        var bodyText = (this._retryContext.exitCode === EXIT_CHAT_ERROR)
+            ? _("You can re-send the recognized text to the AI without dictating again.")
+            : _("You can re-send the recorded audio without dictating again.");
+
+        var messageLabel = new St.Label({
+            text: bodyText,
+            style: 'margin-bottom: 10px;'
+        });
+        contentBox.add(messageLabel);
+
+        dialog.contentLayout.add(contentBox);
+
+        dialog.setButtons([
+            {
+                label: _("Retry"),
+                action: Lang.bind(this, function() {
+                    dialog.close();
+                    this._retryFromContext();
+                })
+            },
+            {
+                label: _("Cancel"),
+                action: Lang.bind(this, function() {
+                    dialog.close();
+                    this._clearRetryContext();
+                    this.setState(STATE_IDLE);
+                })
+            }
+        ]);
+
+        dialog.open();
+    },
+
+    /**
+     * Respawn the Python script using the preserved retry context — either
+     * RETRY_TRANSCRIBE_FROM (reuse audio) or RETRY_CHAT_FROM (reuse text).
+     * The process then enters STATE_PROCESSING directly, skipping recording.
+     */
+    _retryFromContext: function() {
+        if (!this._retryContext) return;
+        var ctx = this._retryContext;
+
+        // We're about to reuse the artifact — hand ownership to the script,
+        // so that _clearRetryContext() later won't delete a file the new run
+        // may still need. We null the context here; the new run populates
+        // its own retry context if it also fails.
+        this._retryContext = null;
+
+        this._activeCustomPrompt = ctx.customPrompt || null;
+        this.setState(STATE_PROCESSING);
+
+        var envp = this._buildBaseEnvp();
+        if (ctx.customPrompt) {
+            envp.push('CUSTOM_PROMPT=' + ctx.customPrompt.prompt);
+            envp.push('CHAT_MODEL=' + (this.chatModel || 'gpt-4o-mini'));
+        }
+        if (ctx.exitCode === EXIT_CHAT_ERROR && ctx.textFile) {
+            envp.push('RETRY_CHAT_FROM=' + ctx.textFile);
+        } else if (ctx.audioFile) {
+            envp.push('RETRY_TRANSCRIBE_FROM=' + ctx.audioFile);
+        }
+
+        // Watchdog budget matches a regular processing run since this path
+        // only does API calls (no recording).
+        if (this._activeCustomPrompt) {
+            this._startProcessingWatchdog(PROCESSING_WATCHDOG_CUSTOM_PROMPT_MS);
+        } else {
+            this._startProcessingWatchdog();
+        }
+
+        this._spawnScript(envp);
+    },
+
+    /**
      * Task 4.5: Implement showErrorDialog() function
      * Show modal dialog with error details
      */
@@ -550,8 +691,14 @@ VoiceKeyboardApplet.prototype = {
                 break;
 
             case STATE_ERROR:
-                // Show error dialog
-                this.showErrorDialog();
+                // If we still have a preserved retry artifact, re-open the
+                // retry dialog so the user can try again. Otherwise show the
+                // regular error dialog.
+                if (this._retryContext) {
+                    this.showRetryDialog();
+                } else {
+                    this.showErrorDialog();
+                }
                 break;
         }
     },
@@ -642,11 +789,39 @@ VoiceKeyboardApplet.prototype = {
                         exitCode = (status >> 8) & 0xFF;
                     }
 
+                    // Parse sentinel lines (AUDIO_FILE=, TEXT_FILE=) that the
+                    // Python script appends to stdout on transcription/chat errors
+                    // to let us offer the user a retry with the preserved artifact.
+                    var savedAudioFile = null;
+                    var savedTextFile = null;
+                    if (outputText) {
+                        var lines = outputText.split('\n');
+                        var cleanLines = [];
+                        for (var li = 0; li < lines.length; li++) {
+                            var line = lines[li];
+                            if (line.indexOf('AUDIO_FILE=') === 0) {
+                                savedAudioFile = line.substring('AUDIO_FILE='.length);
+                            } else if (line.indexOf('TEXT_FILE=') === 0) {
+                                savedTextFile = line.substring('TEXT_FILE='.length);
+                            } else {
+                                cleanLines.push(line);
+                            }
+                        }
+                        outputText = cleanLines.join('\n');
+                    }
+
+                    // Snapshot the custom prompt BEFORE clearing — we need it for
+                    // chat retries below (the retry spawns a fresh process).
+                    var failedCustomPrompt = this._activeCustomPrompt;
+                    this._activeCustomPrompt = null;
+
                     // Handle exit codes
                     if (exitCode === EXIT_SUCCESS) {
+                        this._clearRetryContext();
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TIMEOUT) {
+                        this._clearRetryContext();
                         Main.notify(
                             "Voice Keyboard Perlover",
                             _("Maximum recording time reached")
@@ -654,14 +829,61 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_TRANSCRIPTION_ERROR) {
+                        // Transcription failed (network timeout, API error, etc.).
+                        // If the script preserved the audio, offer a retry dialog
+                        // so the user doesn't have to re-dictate.
                         this.errorMessage = _("Transcription failed");
+                        if (savedAudioFile) {
+                            this._retryContext = {
+                                audioFile: savedAudioFile,
+                                textFile: null,
+                                customPrompt: failedCustomPrompt,
+                                exitCode: EXIT_TRANSCRIPTION_ERROR
+                            };
+                            this.setState(STATE_ERROR);
+                            this.showRetryDialog();
+                        } else {
+                            Main.notify(
+                                "Voice Keyboard Perlover",
+                                _("Transcription failed")
+                            );
+                            this.setState(STATE_ERROR);
+                        }
+
+                    } else if (exitCode === EXIT_CHAT_ERROR) {
+                        // Chat API failed — if the script preserved the recognized
+                        // text, offer to retry just the chat step (no re-upload of audio).
+                        this.errorMessage = _("AI chat processing failed");
+                        if (savedTextFile && failedCustomPrompt) {
+                            this._retryContext = {
+                                audioFile: null,
+                                textFile: savedTextFile,
+                                customPrompt: failedCustomPrompt,
+                                exitCode: EXIT_CHAT_ERROR
+                            };
+                            this.setState(STATE_ERROR);
+                            this.showRetryDialog();
+                        } else {
+                            Main.notify(
+                                "Voice Keyboard Perlover",
+                                _("AI chat processing failed")
+                            );
+                            this.setState(STATE_ERROR);
+                        }
+
+                    } else if (exitCode === EXIT_PASTE_ERROR) {
+                        // Transcription succeeded and the text is already in the
+                        // clipboard — only the auto-paste (xclip/xdotool) failed.
+                        // No retry needed: just tell the user to paste manually.
+                        this._clearRetryContext();
                         Main.notify(
                             "Voice Keyboard Perlover",
-                            _("Transcription failed")
+                            _("Text is in the clipboard — paste it manually (Ctrl+V or Shift+Insert)")
                         );
-                        this.setState(STATE_ERROR);
+                        this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_RECORDING_ERROR) {
+                        this._clearRetryContext();
                         this.errorMessage = _("Recording failed");
                         Main.notify(
                             "Voice Keyboard Perlover",
@@ -670,6 +892,7 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_ERROR);
 
                     } else if (exitCode === EXIT_CONFIG_ERROR) {
+                        this._clearRetryContext();
                         Main.notify(
                             "Voice Keyboard Perlover",
                             _("Configuration error - please check settings")
@@ -677,17 +900,11 @@ VoiceKeyboardApplet.prototype = {
                         this.setState(STATE_IDLE);
 
                     } else if (exitCode === EXIT_CANCELLED) {
+                        this._clearRetryContext();
                         this.setState(STATE_IDLE);
 
-                    } else if (exitCode === EXIT_CHAT_ERROR) {
-                        this.errorMessage = _("AI chat processing failed");
-                        Main.notify(
-                            "Voice Keyboard Perlover",
-                            _("AI chat processing failed")
-                        );
-                        this.setState(STATE_ERROR);
-
                     } else {
+                        this._clearRetryContext();
                         this.errorMessage = _("Process exited with code %d").replace("%d", exitCode);
                         Main.notify(
                             "Voice Keyboard Perlover",
@@ -695,9 +912,6 @@ VoiceKeyboardApplet.prototype = {
                         );
                         this.setState(STATE_ERROR);
                     }
-
-                    // Clear custom prompt state
-                    this._activeCustomPrompt = null;
                 }));
             }
         } catch (e) {
@@ -725,6 +939,8 @@ VoiceKeyboardApplet.prototype = {
             return;
         }
 
+        // Starting fresh — drop any preserved retry artifact from a previous run
+        this._clearRetryContext();
         this._activeCustomPrompt = null;
         this.setState(STATE_RECORDING);
         var envp = this._buildBaseEnvp();
@@ -743,6 +959,8 @@ VoiceKeyboardApplet.prototype = {
             return;
         }
         this._debug("Custom prompt recording: name=" + promptData.name + ", chatModel=" + this.chatModel);
+        // Starting fresh — drop any preserved retry artifact from a previous run
+        this._clearRetryContext();
         this._activeCustomPrompt = promptData;
         this.setState(STATE_RECORDING);
         var envp = this._buildBaseEnvp();
@@ -775,11 +993,12 @@ VoiceKeyboardApplet.prototype = {
             }
         }
 
-        // Start watchdog timer to prevent infinite hang if server doesn't respond
-        // Use longer timeout for custom prompts (2 API calls: transcription + chat)
+        // Start watchdog timer to prevent infinite hang if server doesn't respond.
+        // Custom prompt mode does 2 API calls (transcription + chat), both with
+        // internal retries — use a larger budget.
         if (this._activeCustomPrompt) {
-            this._debug("About to start watchdog timer (custom prompt mode, 120s)");
-            this._startProcessingWatchdog(120000);
+            this._debug("About to start watchdog timer (custom prompt mode)");
+            this._startProcessingWatchdog(PROCESSING_WATCHDOG_CUSTOM_PROMPT_MS);
         } else {
             this._debug("About to start watchdog timer (standard mode)");
             this._startProcessingWatchdog();

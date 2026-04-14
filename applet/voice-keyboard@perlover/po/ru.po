@@ -76,6 +76,26 @@ msgstr "Сервер не ответил вовремя"
 msgid "AI chat processing failed"
 msgstr "Ошибка обработки AI-чатом"
 
+#. applet.js - retry dialog title
+msgid "Speech was not recognized"
+msgstr "Речь не была распознана"
+
+#. applet.js - retry dialog body (transcription retry)
+msgid "You can re-send the recorded audio without dictating again."
+msgstr "Вы можете отправить записанное аудио ещё раз, не переговаривая."
+
+#. applet.js - retry dialog body (chat retry)
+msgid "You can re-send the recognized text to the AI without dictating again."
+msgstr "Вы можете отправить распознанный текст AI ещё раз, не переговаривая."
+
+#. applet.js - retry dialog button
+msgid "Retry"
+msgstr "Повторить"
+
+#. applet.js - paste-failed notification
+msgid "Text is in the clipboard — paste it manually (Ctrl+V or Shift+Insert)"
+msgstr "Текст в буфере обмена — вставьте его вручную (Ctrl+V или Shift+Insert)"
+
 #. settings-schema.json
 msgid "Whisper mode"
 msgstr "Режим Whisper"

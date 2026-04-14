@@ -1,3 +1,21 @@
+voice-keyboard-perlover (1.9.0-1) noble; urgency=medium
+
+  * Resilient transcription: automatic retry on transient network errors
+  * Python script now retries Whisper/Chat API up to 3 times with backoff
+    on Timeout and ConnectionError (silent to the user)
+  * On transcription failure — preserve recorded audio and offer a retry
+    dialog so the user does not have to re-dictate
+  * On chat API failure — preserve recognized text and offer chat-only
+    retry (no re-upload of audio)
+  * New exit code 7 (EXIT_PASTE_ERROR) for the case when transcription
+    succeeded but auto-paste failed — text is in the clipboard and the
+    user is notified to paste manually, no error dialog
+  * Increased processing watchdog to 150s / 240s (custom prompt) to
+    accommodate internal retries
+  * i18n: new strings translated to 6 languages (ru, es, de, fr, zh, ja)
+
+ -- perlover <perlover@perlover.com>  Tue, 14 Apr 2026 15:30:00 +0200
+
 voice-keyboard-perlover (1.8.1-1) noble; urgency=medium
 
   * Fix file descriptor leak causing "Too many open files" after multiple dictations

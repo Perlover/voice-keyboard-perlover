@@ -29,6 +29,11 @@ EXIT_TRANSCRIPTION_ERROR = 3
 EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
 EXIT_CHAT_ERROR = 6
+EXIT_PASTE_ERROR = 7
+
+# Retry policy for transient network errors (Timeout, ConnectionError)
+NETWORK_RETRY_ATTEMPTS = 3  # total attempts including the first one
+NETWORK_RETRY_BACKOFF = [1, 3]  # seconds to wait before attempt 2, 3
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.ogg"):
@@ -116,6 +121,47 @@ def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input
         return (False, False)
 
 
+def _post_with_retry(label, build_request):
+    """
+    Execute a POST request with automatic retries on transient network errors.
+
+    build_request is a callable that returns the Response object (it must
+    re-open any file handles inside, because the body stream cannot be reused
+    between attempts).
+
+    Returns the Response on success, or None if all attempts failed with a
+    transient error. Non-transient exceptions propagate.
+    """
+    last_err = None
+    for attempt in range(1, NETWORK_RETRY_ATTEMPTS + 1):
+        try:
+            start_time = time.time()
+            response = build_request()
+            elapsed = time.time() - start_time
+            print(f"{label}: response in {elapsed:.1f}s (attempt {attempt})", file=sys.stderr)
+            return response
+        except requests.exceptions.Timeout as e:
+            last_err = ("timeout", e)
+            print(f"WARN: {label}: timeout on attempt {attempt}/{NETWORK_RETRY_ATTEMPTS}", file=sys.stderr)
+        except requests.exceptions.ConnectionError as e:
+            last_err = ("connection", e)
+            print(f"WARN: {label}: connection error on attempt {attempt}/{NETWORK_RETRY_ATTEMPTS}: {e}", file=sys.stderr)
+
+        # Wait before retrying, unless this was the last attempt
+        if attempt < NETWORK_RETRY_ATTEMPTS:
+            delay = NETWORK_RETRY_BACKOFF[attempt - 1] if attempt - 1 < len(NETWORK_RETRY_BACKOFF) else NETWORK_RETRY_BACKOFF[-1]
+            print(f"WARN: {label}: retrying in {delay}s", file=sys.stderr)
+            time.sleep(delay)
+
+    if last_err:
+        kind, exc = last_err
+        if kind == "timeout":
+            print(f"ERROR: {label}: server did not respond after {NETWORK_RETRY_ATTEMPTS} attempts", file=sys.stderr)
+        else:
+            print(f"ERROR: {label}: cannot connect after {NETWORK_RETRY_ATTEMPTS} attempts: {exc}", file=sys.stderr)
+    return None
+
+
 def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
     """
     Transcribe audio using OpenAI Whisper API
@@ -133,22 +179,26 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
         # Check file size for debugging
         file_size = os.path.getsize(audio_file)
         print(f"Audio file size: {file_size} bytes", file=sys.stderr)
+        print(f"Sending request to OpenAI API (model: {model})...", file=sys.stderr)
 
-        with open(audio_file, 'rb') as f:
-            files = {
-                'file': (os.path.basename(audio_file), f, 'audio/ogg'),
-                'model': (None, model)
-            }
+        def build_request():
+            # Re-open file on every attempt — the request body stream is consumed
+            f = open(audio_file, 'rb')
+            try:
+                files = {
+                    'file': (os.path.basename(audio_file), f, 'audio/ogg'),
+                    'model': (None, model)
+                }
+                if language != "auto":
+                    files['language'] = (None, language)
+                # Timeout: 10 sec for connection, 30 sec for server response
+                return requests.post(url, headers=headers, files=files, timeout=(10, 30))
+            finally:
+                f.close()
 
-            if language != "auto":
-                files['language'] = (None, language)
-
-            print(f"Sending request to OpenAI API (model: {model})...", file=sys.stderr)
-            start_time = time.time()
-            # Timeout: 10 sec for connection, 30 sec for server response
-            response = requests.post(url, headers=headers, files=files, timeout=(10, 30))
-            elapsed = time.time() - start_time
-            print(f"OpenAI response received in {elapsed:.1f}s", file=sys.stderr)
+        response = _post_with_retry("OpenAI Whisper", build_request)
+        if response is None:
+            return None
 
         if response.status_code == 200:
             result = response.json()
@@ -166,12 +216,6 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             print(f"ERROR: OpenAI API error: {response.status_code} {response.text}", file=sys.stderr)
             return None
 
-    except requests.exceptions.Timeout:
-        print("ERROR: OpenAI server did not respond in time (30 sec limit). The server may be overloaded.", file=sys.stderr)
-        return None
-    except requests.exceptions.ConnectionError:
-        print("ERROR: Cannot connect to OpenAI API. Check your internet connection.", file=sys.stderr)
-        return None
     except Exception as e:
         print(f"ERROR: OpenAI transcription failed: {e}", file=sys.stderr)
         return None
@@ -182,25 +226,26 @@ def transcribe_local(audio_file, server_url, language="auto"):
     Transcribe audio using local Whisper server (e.g., faster-whisper-server)
     """
     try:
-        # Check file size for debugging
         file_size = os.path.getsize(audio_file)
         print(f"Audio file size: {file_size} bytes", file=sys.stderr)
+        print(f"Sending to local Whisper server at {server_url}...", file=sys.stderr)
 
-        with open(audio_file, 'rb') as f:
-            files = {
-                'audio_file': (os.path.basename(audio_file), f, 'audio/ogg')
-            }
+        def build_request():
+            f = open(audio_file, 'rb')
+            try:
+                files = {
+                    'audio_file': (os.path.basename(audio_file), f, 'audio/ogg')
+                }
+                data = {}
+                if language != "auto":
+                    data['language'] = language
+                return requests.post(server_url, files=files, data=data, timeout=(10, 30))
+            finally:
+                f.close()
 
-            data = {}
-            if language != "auto":
-                data['language'] = language
-
-            print(f"Sending to local Whisper server at {server_url}...", file=sys.stderr)
-            start_time = time.time()
-            # Timeout: 10 sec for connection, 30 sec for server response
-            response = requests.post(server_url, files=files, data=data, timeout=(10, 30))
-            elapsed = time.time() - start_time
-            print(f"Local server response received in {elapsed:.1f}s", file=sys.stderr)
+        response = _post_with_retry("Local Whisper", build_request)
+        if response is None:
+            return None
 
         if response.status_code == 200:
             result = response.json()
@@ -218,13 +263,6 @@ def transcribe_local(audio_file, server_url, language="auto"):
             print(f"ERROR: Local server error: {response.status_code} {response.text}", file=sys.stderr)
             return None
 
-    except requests.exceptions.Timeout:
-        print(f"ERROR: Local Whisper server did not respond in time (30 sec limit).", file=sys.stderr)
-        return None
-    except requests.exceptions.ConnectionError:
-        print(f"ERROR: Cannot connect to local Whisper server at {server_url}", file=sys.stderr)
-        print("Make sure the server is running", file=sys.stderr)
-        return None
     except Exception as e:
         print(f"ERROR: Local transcription failed: {e}", file=sys.stderr)
         return None
@@ -267,25 +305,23 @@ def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
             payload["temperature"] = 0.3
 
         print(f"Chat API request: model={model}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
-        start_time = time.time()
-        response = requests.post(url, headers=headers, json=payload, timeout=(10, 60))
-        elapsed = time.time() - start_time
+
+        def build_request():
+            return requests.post(url, headers=headers, json=payload, timeout=(10, 60))
+
+        response = _post_with_retry("OpenAI Chat", build_request)
+        if response is None:
+            return None
 
         if response.status_code == 200:
             result = response.json()
             content = result['choices'][0]['message']['content'].strip()
-            print(f"Chat API response: {elapsed:.1f}s, {len(content)} chars", file=sys.stderr)
+            print(f"Chat API: {len(content)} chars received", file=sys.stderr)
             return content
         else:
             print(f"ERROR: Chat API error: {response.status_code} {response.text}", file=sys.stderr)
             return None
 
-    except requests.exceptions.Timeout:
-        print("ERROR: Chat API did not respond in time (60 sec limit)", file=sys.stderr)
-        return None
-    except requests.exceptions.ConnectionError:
-        print("ERROR: Cannot connect to OpenAI Chat API", file=sys.stderr)
-        return None
     except Exception as e:
         print(f"ERROR: Chat completion failed: {e}", file=sys.stderr)
         return None
@@ -423,12 +459,21 @@ def paste_text(text, window_id=None):
         return False
 
 
+def _print_sentinel(key, value):
+    """Print a machine-readable marker line to stdout for the applet to parse."""
+    print(f"{key}={value}", file=sys.stdout)
+
+
 def main():
     # Get configuration from environment variables
     whisper_mode = os.environ.get('WHISPER_MODE', 'openai').lower()
     language = os.environ.get('WHISPER_LANGUAGE', 'auto')
     max_duration = int(os.environ.get('RECORDING_DURATION', '300'))
     openai_model = os.environ.get('OPENAI_MODEL', 'whisper-1')
+
+    # Retry modes: skip recording and/or transcription, reuse saved artifacts
+    retry_transcribe_from = os.environ.get('RETRY_TRANSCRIBE_FROM', '').strip()
+    retry_chat_from = os.environ.get('RETRY_CHAT_FROM', '').strip()
 
     # Validate configuration
     if whisper_mode == 'openai':
@@ -445,43 +490,77 @@ def main():
         print(f"ERROR: Unknown WHISPER_MODE: {whisper_mode}", file=sys.stderr)
         sys.exit(EXIT_CONFIG_ERROR)
 
-    # Task 5.3: Capture initial active window ID
+    # Capture initial active window ID for paste targeting
     initial_window_id = get_active_window()
     if not initial_window_id:
         print("WARNING: Could not get initial window ID, window tracking disabled", file=sys.stderr)
 
-    # Create temporary file for audio (OGG/Opus format - streaming, always valid)
-    temp_audio = tempfile.mktemp(suffix='.ogg', prefix='whisper-voice-')
+    # Decide audio file path:
+    # - Normal mode: new temp file for the fresh recording
+    # - Retry transcription: reuse the existing failed-run audio
+    # - Retry chat:         no recording needed at all
+    if retry_chat_from:
+        temp_audio = None
+    elif retry_transcribe_from:
+        if not os.path.exists(retry_transcribe_from):
+            print(f"ERROR: RETRY_TRANSCRIBE_FROM path does not exist: {retry_transcribe_from}", file=sys.stderr)
+            sys.exit(EXIT_RECORDING_ERROR)
+        temp_audio = retry_transcribe_from
+        print(f"Retry mode: reusing audio from {temp_audio}", file=sys.stderr)
+    else:
+        temp_audio = tempfile.mktemp(suffix='.ogg', prefix='whisper-voice-')
+
+    # Text state for chat-retry handoff — text file path is allocated lazily
+    temp_text_path = None
+
+    # Track which artifacts should be preserved for retry (set on transcription/
+    # chat errors, checked in `finally`). Anything not preserved gets cleaned up.
+    preserve_audio = False
+    preserve_text = False
 
     try:
-        # Task 5.5: Record audio with user control and maximum duration
-        success, reached_max = record_audio_user_controlled(max_duration, temp_audio)
+        # Step 1: Record audio — unless we're in any retry mode
+        if not retry_chat_from and not retry_transcribe_from:
+            success, reached_max = record_audio_user_controlled(max_duration, temp_audio)
+            if not success:
+                sys.exit(EXIT_RECORDING_ERROR)
+            if reached_max:
+                print("Maximum recording duration reached", file=sys.stderr)
+        else:
+            # Retry modes: no recording happened, so `reached_max` cannot apply
+            reached_max = False
 
-        if not success:
-            sys.exit(EXIT_RECORDING_ERROR)
+        # Step 2: Transcribe — unless we're retrying the chat step only
+        if retry_chat_from:
+            if not os.path.exists(retry_chat_from):
+                print(f"ERROR: RETRY_CHAT_FROM path does not exist: {retry_chat_from}", file=sys.stderr)
+                sys.exit(EXIT_CHAT_ERROR)
+            try:
+                with open(retry_chat_from, 'r', encoding='utf-8') as tf:
+                    text = tf.read()
+            except Exception as e:
+                print(f"ERROR: Cannot read RETRY_CHAT_FROM file: {e}", file=sys.stderr)
+                sys.exit(EXIT_CHAT_ERROR)
+            # Reuse the same text file path so subsequent chat retries keep working
+            temp_text_path = retry_chat_from
+            print(f"Retry mode: reusing recognized text from {temp_text_path}", file=sys.stderr)
+        else:
+            text = None
+            if whisper_mode == 'openai':
+                api_key = os.environ.get('OPENAI_API_KEY', '')
+                text = transcribe_openai(temp_audio, api_key, language, openai_model)
+            elif whisper_mode == 'local':
+                server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
+                text = transcribe_local(temp_audio, server_url, language)
 
-        # Task 5.6: Exit with code 5 if maximum duration reached
-        if reached_max:
-            # Still transcribe the audio, but will notify applet
-            print("Maximum recording duration reached", file=sys.stderr)
+            if not text:
+                # Transcription failed — preserve audio so applet can offer retry
+                preserve_audio = True
+                _print_sentinel('AUDIO_FILE', temp_audio)
+                print("No text recognized", file=sys.stderr)
+                sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
-        # Step 2: Transcribe
-        text = None
-
-        if whisper_mode == 'openai':
-            api_key = os.environ.get('OPENAI_API_KEY', '')
-            # Use transcribe_openai for all models (whisper-1, gpt-4o-transcribe, etc.)
-            text = transcribe_openai(temp_audio, api_key, language, openai_model)
-
-        elif whisper_mode == 'local':
-            server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
-            text = transcribe_local(temp_audio, server_url, language)
-
-        if not text:
-            print("No text recognized", file=sys.stderr)
-            sys.exit(EXIT_TRANSCRIPTION_ERROR)
-
-        print(f"Recognized: {text}", file=sys.stderr)
+            print(f"Recognized: {text}", file=sys.stderr)
 
         # Step 2.5: If custom prompt mode, process through Chat API
         custom_prompt = os.environ.get('CUSTOM_PROMPT', '')
@@ -492,32 +571,49 @@ def main():
             api_key = os.environ.get('OPENAI_API_KEY', '')
             processed = chat_completion(text, custom_prompt, api_key, chat_model)
             if not processed:
+                # Chat API failed — preserve transcribed text so applet can retry
+                # just the chat step without re-running Whisper.
+                if not temp_text_path:
+                    temp_text_path = tempfile.mktemp(suffix='.txt', prefix='whisper-voice-text-')
+                    try:
+                        with open(temp_text_path, 'w', encoding='utf-8') as tf:
+                            tf.write(text)
+                    except Exception as e:
+                        print(f"WARNING: Cannot save intermediate text: {e}", file=sys.stderr)
+                        temp_text_path = None
+                if temp_text_path:
+                    preserve_text = True
+                    _print_sentinel('TEXT_FILE', temp_text_path)
                 sys.exit(EXIT_CHAT_ERROR)
             text = processed
             print(f"Processed: {text}", file=sys.stderr)
 
         # Step 3: Paste text to original window
-
-        # Paste text using clipboard + Shift+Insert method
-        # This activates the original window before pasting
         if paste_text(text, initial_window_id):
-            # Output the recognized text to stdout (for the applet)
+            # Output recognized text to stdout (applet reads it if needed)
             print(text, file=sys.stdout)
-
             if reached_max:
                 sys.exit(EXIT_TIMEOUT)
             else:
                 sys.exit(EXIT_SUCCESS)
         else:
-            print("ERROR: paste_text() failed - text was not inserted", file=sys.stderr)
-            sys.exit(EXIT_TRANSCRIPTION_ERROR)
+            # Text is already in clipboard (paste_text copies before pressing keys),
+            # so the user can paste manually. Dedicated exit code tells the applet
+            # to show a lightweight notification instead of a retry dialog.
+            print("ERROR: paste_text() failed - text was not inserted (still in clipboard)", file=sys.stderr)
+            sys.exit(EXIT_PASTE_ERROR)
 
     finally:
-        # Cleanup temporary file
-        if os.path.exists(temp_audio):
+        # Cleanup: keep artifacts only when applet will offer retry for them
+        if temp_audio and not preserve_audio and os.path.exists(temp_audio):
             try:
                 os.remove(temp_audio)
-            except:
+            except Exception:
+                pass
+        if temp_text_path and not preserve_text and os.path.exists(temp_text_path):
+            try:
+                os.remove(temp_text_path)
+            except Exception:
                 pass
 
 
