@@ -156,7 +156,7 @@ VoiceKeyboardApplet.prototype = {
             St.IconType.SYMBOLIC
         );
         settingsItem.connect('activate', Lang.bind(this, function() {
-            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+            Util.spawnCommandLine("xlet-settings applet " + this.metadata.uuid + " -i " + this.instance_id);
         }));
         this.menu.addMenuItem(settingsItem);
 
@@ -673,7 +673,7 @@ VoiceKeyboardApplet.prototype = {
                         "Voice Keyboard Perlover",
                         _("Settings are not configured")
                     );
-                    Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+                    Util.spawnCommandLine("xlet-settings applet " + this.metadata.uuid + " -i " + this.instance_id);
                     return;
                 }
                 // Start recording
@@ -935,7 +935,7 @@ VoiceKeyboardApplet.prototype = {
                 "Voice Keyboard Perlover",
                 _("Settings are not configured")
             );
-            Util.spawnCommandLine("cinnamon-settings applets " + this.metadata.uuid);
+            Util.spawnCommandLine("xlet-settings applet " + this.metadata.uuid + " -i " + this.instance_id);
             return;
         }
 
