@@ -30,6 +30,7 @@ Hello everyone! This app was put together in roughly 2-3 hours, almost entirely 
   - `python3`
   - `python3-requests`
   - `xdotool`
+  - `xclip`
   - `ffmpeg`
   - `pulseaudio`
 
@@ -222,7 +223,7 @@ sudo apt-get install python3-requests
 
 ### Text isn't typed correctly
 
-- Ensure `xdotool` is installed: `sudo apt-get install xdotool`
+- Ensure `xclip` and `xdotool` are installed: `sudo apt-get install xclip xdotool`
 - The active window must accept text input
 - Some applications may not support xdotool input
 

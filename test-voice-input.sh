@@ -11,7 +11,7 @@ echo ""
 
 # Check dependencies
 echo "Checking dependencies..."
-for cmd in python3 ffmpeg xdotool; do
+for cmd in python3 ffmpeg xdotool xclip; do
     if ! command -v $cmd &> /dev/null; then
         echo "ERROR: $cmd is not installed"
         exit 1

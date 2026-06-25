@@ -60,7 +60,7 @@ else
     # Method 2: Install dependencies first, then dpkg
     echo "Installing dependencies..."
     sudo apt-get update
-    sudo apt-get install -y cinnamon python3 python3-requests xdotool ffmpeg pulseaudio
+    sudo apt-get install -y cinnamon python3 python3-requests xdotool xclip ffmpeg pulseaudio
 
     echo ""
     echo "Installing package..."

@@ -42,7 +42,7 @@ git clone https://github.com/YOUR_USERNAME/voice-keyboard-perlover.git
 cd voice-keyboard-perlover
 
 # Install system dependencies
-sudo apt-get install cinnamon python3 python3-requests xdotool ffmpeg pulseaudio
+sudo apt-get install cinnamon python3 python3-requests xdotool xclip ffmpeg pulseaudio
 
 # For Debian packaging
 sudo apt-get install dpkg-dev debhelper
