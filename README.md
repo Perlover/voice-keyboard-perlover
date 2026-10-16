@@ -168,6 +168,38 @@ faster-whisper-server \
   --model large-v3
 ```
 
+#### Option C: Using an OpenAI-compatible Server
+
+Any server that implements the OpenAI audio API (`/v1/audio/transcriptions`
+and `/v1/models`) works: your own inference hub, LiteLLM, vLLM, LocalAI,
+speaches, etc. Model names on such servers are usually non-standard, so the
+model is a free-text field.
+
+1. Set **Whisper mode** to "OpenAI-compatible Server"
+2. Enter the **Server Base URL**, usually ending with `/v1`
+   (e.g., `https://hub.example.com/v1`; a bare host gets `/v1` appended)
+3. Enter the **Server API Key** (leave empty if the server has no authentication)
+4. Click **Check Connection and Choose Transcription Model...**: the applet
+   requests `GET /v1/models` and shows the list; click a model to fill in
+   **Transcription Model**. Likely speech-to-text models (whisper, asr, stt,
+   transcribe...) are listed first. You can also type the model name manually.
+5. Optional, for custom prompts: click **Choose Chat Model for Prompts...** and
+   pick a chat model the same way (or type it into **Chat Model (for prompts)**).
+   Prompts then go to `POST /v1/chat/completions` of the same server with the
+   same key. The prompt list is shared with OpenAI API mode; until a chat
+   model is set, clicking a prompt opens the settings instead of recording.
+6. Reasoning models (Qwen3 and similar) think before answering, which can take
+   a minute, so reasoning is off by default: prompt requests carry
+   `chat_template_kwargs: {"enable_thinking": false}`, supported by vLLM and
+   SGLang (also through a LiteLLM gateway) and ignored by non-reasoning models.
+   Turn on **Allow reasoning (thinking) of the chat model** to let the model
+   decide itself (the field is not sent), e.g. if the server rejects it.
+
+The OpenAI models API doesn't report what a model can do, so the applet sorts
+the list by name only; all models stay selectable. The API key must be allowed
+to use both chosen models (on a LiteLLM gateway a restricted key answers
+`403 key_model_access_denied` and lists only its own models).
+
 ## Usage
 
 ### Voice Input Methods

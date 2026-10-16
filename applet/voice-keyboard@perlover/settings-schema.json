@@ -9,9 +9,10 @@
         "description": "Whisper mode",
         "options": {
             "OpenAI API": "openai",
+            "OpenAI-compatible Server": "openai-compatible",
             "Local Server": "local"
         },
-        "tooltip": "Choose between OpenAI API or local Whisper server"
+        "tooltip": "Choose OpenAI API, any server with an OpenAI-compatible API (e.g., your own inference hub) or a local Whisper server"
     },
     "openai-api-key": {
         "type": "entry",
@@ -37,6 +38,34 @@
         "description": "Local Whisper Server URL",
         "tooltip": "URL of your local Whisper server (e.g., faster-whisper-server)",
         "dependency": "whisper-mode=local"
+    },
+    "compat-base-url": {
+        "type": "entry",
+        "default": "",
+        "description": "Server Base URL",
+        "tooltip": "Base URL of the OpenAI-compatible API, usually ending with /v1 (e.g., https://hub.example.com/v1)",
+        "dependency": "whisper-mode=openai-compatible"
+    },
+    "compat-api-key": {
+        "type": "entry",
+        "default": "",
+        "description": "Server API Key",
+        "tooltip": "API key for the server. Leave empty if the server does not require authentication",
+        "dependency": "whisper-mode=openai-compatible"
+    },
+    "compat-model": {
+        "type": "entry",
+        "default": "",
+        "description": "Transcription Model",
+        "tooltip": "Model name exactly as the server knows it. Use 'Check Connection' to pick it from the server's list",
+        "dependency": "whisper-mode=openai-compatible"
+    },
+    "compat-check-connection": {
+        "type": "button",
+        "description": "Check Connection and Choose Transcription Model...",
+        "callback": "onCheckCompatConnection",
+        "tooltip": "Connect to the server, show the list of available models and pick one with a click",
+        "dependency": "whisper-mode=openai-compatible"
     },
     "language": {
         "type": "combobox",
@@ -82,16 +111,37 @@
         "tooltip": "Model for processing text with custom prompts",
         "dependency": "whisper-mode=openai"
     },
+    "compat-chat-model": {
+        "type": "entry",
+        "default": "",
+        "description": "Chat Model (for prompts)",
+        "tooltip": "Chat model on the server for processing recognized text with custom prompts",
+        "dependency": "whisper-mode=openai-compatible"
+    },
+    "compat-choose-chat-model": {
+        "type": "button",
+        "description": "Choose Chat Model for Prompts...",
+        "callback": "onChooseCompatChatModel",
+        "tooltip": "Connect to the server, show the list of available models and pick the chat model for custom prompts with a click",
+        "dependency": "whisper-mode=openai-compatible"
+    },
+    "compat-enable-thinking": {
+        "type": "switch",
+        "default": false,
+        "description": "Allow reasoning (thinking) of the chat model",
+        "tooltip": "Off (recommended): reasoning models (Qwen3 and similar) answer many times faster, the request carries chat_template_kwargs: {\"enable_thinking\": false}, supported by vLLM and SGLang. On: the model decides itself and the field is not sent; also turn it on if the server rejects prompt requests",
+        "dependency": "whisper-mode=openai-compatible"
+    },
     "custom-prompts-help": {
         "type": "label",
         "description": "Instructions: Click '+' to add. Use AI to process text. Example: Name='Fix Grammar', Prompt='Correct all typos in the following text:'",
-        "dependency": "whisper-mode=openai"
+        "dependency": "whisper-mode!=local"
     },
     "custom-prompts": {
         "type": "list",
         "description": "Custom Prompts: click '+' to add. Use AI to process recognized text.",
         "tooltip": "Enabled: toggle prompt. Menu Name: how it appears in right-click menu. System Prompt: instructions for the AI (e.g., 'Translate to French' or 'Fix grammar').",
-        "dependency": "whisper-mode=openai",
+        "dependency": "whisper-mode!=local",
         "columns": [
             {"id": "enabled", "title": "Enabled", "type": "boolean", "default": true},
             {"id": "name", "title": "Menu Name (e.g., 'My Prompt')", "type": "string", "default": ""},

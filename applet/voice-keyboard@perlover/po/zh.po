@@ -109,8 +109,8 @@ msgid "Local Server"
 msgstr "本地服务器"
 
 #. settings-schema.json
-msgid "Choose between OpenAI API or local Whisper server"
-msgstr "选择 OpenAI API 或本地 Whisper 服务器"
+msgid "Choose OpenAI API, any server with an OpenAI-compatible API (e.g., your own inference hub) or a local Whisper server"
+msgstr "选择 OpenAI API、任何具有 OpenAI 兼容 API 的服务器（例如您自己的推理中心）或本地 Whisper 服务器"
 
 #. settings-schema.json
 msgid "OpenAI API Key"
@@ -143,6 +143,66 @@ msgstr "本地 Whisper 服务器 URL"
 #. settings-schema.json
 msgid "URL of your local Whisper server (e.g., faster-whisper-server)"
 msgstr "您的本地 Whisper 服务器 URL（例如 faster-whisper-server）"
+
+#. settings-schema.json
+msgid "OpenAI-compatible Server"
+msgstr "OpenAI 兼容服务器"
+
+#. settings-schema.json
+msgid "Server Base URL"
+msgstr "服务器基础 URL"
+
+#. settings-schema.json
+msgid "Base URL of the OpenAI-compatible API, usually ending with /v1 (e.g., https://hub.example.com/v1)"
+msgstr "OpenAI 兼容 API 的基础 URL，通常以 /v1 结尾（例如 https://hub.example.com/v1）"
+
+#. settings-schema.json
+msgid "Server API Key"
+msgstr "服务器 API 密钥"
+
+#. settings-schema.json
+msgid "API key for the server. Leave empty if the server does not require authentication"
+msgstr "服务器的 API 密钥。如果服务器不需要身份验证，请留空"
+
+#. settings-schema.json
+msgid "Transcription Model"
+msgstr "转录模型"
+
+#. settings-schema.json
+msgid "Model name exactly as the server knows it. Use 'Check Connection' to pick it from the server's list"
+msgstr "与服务器上完全一致的模型名称。使用“检查连接”从服务器列表中选择"
+
+#. settings-schema.json
+msgid "Check Connection and Choose Transcription Model..."
+msgstr "检查连接并选择转录模型..."
+
+#. settings-schema.json
+msgid "Connect to the server, show the list of available models and pick one with a click"
+msgstr "连接服务器，显示可用模型列表，单击即可选择"
+
+#. settings-schema.json
+msgid "Chat Model (for prompts)"
+msgstr "聊天模型（用于提示词）"
+
+#. settings-schema.json
+msgid "Chat model on the server for processing recognized text with custom prompts"
+msgstr "服务器上用于通过自定义提示词处理识别文本的聊天模型"
+
+#. settings-schema.json
+msgid "Choose Chat Model for Prompts..."
+msgstr "选择用于提示词的聊天模型..."
+
+#. settings-schema.json
+msgid "Connect to the server, show the list of available models and pick the chat model for custom prompts with a click"
+msgstr "连接服务器，显示可用模型列表，单击选择用于提示词的聊天模型"
+
+#. settings-schema.json
+msgid "Allow reasoning (thinking) of the chat model"
+msgstr "允许聊天模型推理（thinking）"
+
+#. settings-schema.json
+msgid "Off (recommended): reasoning models (Qwen3 and similar) answer many times faster, the request carries chat_template_kwargs: {\"enable_thinking\": false}, supported by vLLM and SGLang. On: the model decides itself and the field is not sent; also turn it on if the server rejects prompt requests"
+msgstr "关闭（推荐）：推理模型（Qwen3 等）的响应快很多倍，请求中包含 chat_template_kwargs: {\"enable_thinking\": false}，vLLM 和 SGLang 支持。开启：由模型自行决定，不发送该字段；如果服务器拒绝提示词请求，也请开启"
 
 #. settings-schema.json
 msgid "Recognition language"
@@ -360,3 +420,74 @@ msgstr "读取文件失败"
 msgid "Invalid settings file format"
 msgstr "设置文件格式无效"
 
+#. applet.js - compatible server connection dialog
+msgid "Enter the server URL first"
+msgstr "请先输入服务器 URL"
+
+#. applet.js - compatible server connection dialog
+msgid "Server Connection"
+msgstr "服务器连接"
+
+#. applet.js - compatible server connection dialog
+msgid "Connecting to %s..."
+msgstr "正在连接 %s..."
+
+#. applet.js - compatible server connection dialog
+msgid "Connection failed"
+msgstr "连接失败"
+
+#. applet.js - compatible server connection dialog
+msgid "Unexpected response from %s. Make sure the package is fully updated."
+msgstr "%s 返回了意外的响应。请确认软件包已完整更新。"
+
+#. applet.js - compatible server connection dialog
+msgid "Connected, but the server returned no models. Enter the model name manually."
+msgstr "已连接，但服务器未返回任何模型。请手动输入模型名称。"
+
+#. applet.js - compatible server connection dialog
+msgid "Connected. Models available: %d"
+msgstr "已连接。可用模型：%d"
+
+#. applet.js - compatible server connection dialog
+msgid "Click a model to use it for transcription."
+msgstr "单击模型即可将其用于转录。"
+
+#. applet.js - compatible server connection dialog
+msgid "Transcription model set: %s"
+msgstr "已设置转录模型：%s"
+
+#. applet.js - compatible server connection dialog
+msgid "Speech recognition models"
+msgstr "语音识别模型"
+
+#. applet.js - compatible server connection dialog
+msgid "Other models"
+msgstr "其他模型"
+
+#. applet.js - compatible server connection dialog
+msgid "Click a model to use it for AI prompts."
+msgstr "单击模型即可将其用于 AI 提示词。"
+
+#. applet.js - compatible server connection dialog
+msgid "Chat model for prompts set: %s"
+msgstr "已设置提示词聊天模型：%s"
+
+#. applet.js - compatible server connection dialog
+msgid "Chat models"
+msgstr "聊天模型"
+
+#. applet.js - notification
+msgid "Choose a chat model for prompts in the settings"
+msgstr "请在设置中选择用于提示词的聊天模型"
+
+#. applet.js - compatible server connection dialog
+msgid "None of these models looks like a chat model. The API key may not have access to chat models on this server."
+msgstr "这些模型看起来都不是聊天模型。该 API 密钥可能无权访问此服务器上的聊天模型。"
+
+#. applet.js - compatible server connection dialog
+msgid "None of these models looks like a speech recognition model. The API key may not have access to it on this server."
+msgstr "这些模型看起来都不是语音识别模型。该 API 密钥可能无权访问此服务器上的此类模型。"
+
+#. applet.js - compatible server connection dialog
+msgid "Showing the first %d models; type any other name in the settings."
+msgstr "仅显示前 %d 个模型；其他名称可在设置中手动输入。"

@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """
 Whisper Voice Input Script
-Records audio and transcribes it using OpenAI Whisper API or local Whisper server
+Records audio and transcribes it using OpenAI Whisper API, an OpenAI-compatible
+server or a local Whisper server
 Then types the recognized text into the active window
+
+Usage:
+    whisper-voice-input                 record, transcribe and paste (config via env)
+    whisper-voice-input --list-models   print models of the OpenAI-compatible server
+                                        (COMPAT_BASE_URL, COMPAT_API_KEY) as JSON
 """
 
 import os
+import re
 import sys
 import tempfile
 import subprocess
@@ -13,6 +20,7 @@ import json
 import signal
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 try:
     import requests
@@ -34,6 +42,12 @@ EXIT_PASTE_ERROR = 7
 # Retry policy for transient network errors (Timeout, ConnectionError)
 NETWORK_RETRY_ATTEMPTS = 3  # total attempts including the first one
 NETWORK_RETRY_BACKOFF = [1, 3]  # seconds to wait before attempt 2, 3
+
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+
+# The applet reads --list-models output only after the process exits, so it
+# must fit into the 64 KB pipe buffer: 500 IDs of up to ~100 chars do
+MAX_LISTED_MODELS = 500
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.ogg"):
@@ -162,6 +176,22 @@ def _post_with_retry(label, build_request):
     return None
 
 
+def normalize_base_url(url):
+    """
+    Normalize the base URL of an OpenAI-compatible server: strip trailing
+    slashes and an endpoint path pasted by mistake; a bare host gets the
+    conventional /v1 prefix.
+    """
+    url = url.strip().rstrip('/')
+    for suffix in ('/audio/transcriptions', '/chat/completions', '/models'):
+        if url.endswith(suffix):
+            url = url[:-len(suffix)].rstrip('/')
+            break
+    if urlparse(url).path == '':
+        url += '/v1'
+    return url
+
+
 def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
     """
     Transcribe audio using OpenAI Whisper API
@@ -170,16 +200,26 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
         print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
         return None
 
+    return transcribe_openai_compatible(audio_file, OPENAI_BASE_URL, api_key,
+                                        language, model, label="OpenAI API")
+
+
+def transcribe_openai_compatible(audio_file, base_url, api_key, language="auto",
+                                 model="whisper-1", label="OpenAI-compatible server"):
+    """
+    Transcribe audio via POST {base_url}/audio/transcriptions (OpenAI API format).
+    The API key is optional: self-hosted servers often run without one.
+    """
     try:
-        url = "https://api.openai.com/v1/audio/transcriptions"
-        headers = {
-            "Authorization": f"Bearer {api_key}"
-        }
+        url = base_url + "/audio/transcriptions"
+        headers = {}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         # Check file size for debugging
         file_size = os.path.getsize(audio_file)
         print(f"Audio file size: {file_size} bytes", file=sys.stderr)
-        print(f"Sending request to OpenAI API (model: {model})...", file=sys.stderr)
+        print(f"Sending request to {label} at {url} (model: {model})...", file=sys.stderr)
 
         def build_request():
             # Re-open file on every attempt — the request body stream is consumed
@@ -196,29 +236,120 @@ def transcribe_openai(audio_file, api_key, language="auto", model="whisper-1"):
             finally:
                 f.close()
 
-        response = _post_with_retry("OpenAI Whisper", build_request)
+        response = _post_with_retry(label, build_request)
         if response is None:
             return None
 
         if response.status_code == 200:
-            result = response.json()
+            try:
+                result = response.json()
+            except ValueError:
+                # Some compatible servers answer with plain text
+                if response.headers.get('Content-Type', '').startswith('text/plain'):
+                    return response.text.strip()
+                print(f"ERROR: {label}: non-JSON response: {response.text[:300]}", file=sys.stderr)
+                return None
             return result.get('text', '').strip()
         elif response.status_code == 429:
-            print(f"ERROR: OpenAI API rate limit exceeded. Please wait and try again.", file=sys.stderr)
+            print(f"ERROR: {label}: rate limit exceeded. Please wait and try again.", file=sys.stderr)
             return None
         elif response.status_code == 401:
-            print(f"ERROR: OpenAI API key is invalid or expired.", file=sys.stderr)
+            print(f"ERROR: {label}: API key is invalid or expired.", file=sys.stderr)
             return None
         elif response.status_code == 400:
-            print(f"ERROR: OpenAI API bad request: {response.text}", file=sys.stderr)
+            print(f"ERROR: {label}: bad request: {response.text}", file=sys.stderr)
             return None
         else:
-            print(f"ERROR: OpenAI API error: {response.status_code} {response.text}", file=sys.stderr)
+            print(f"ERROR: {label}: error {response.status_code} {response.text}", file=sys.stderr)
             return None
 
     except Exception as e:
-        print(f"ERROR: OpenAI transcription failed: {e}", file=sys.stderr)
+        print(f"ERROR: {label}: transcription failed: {e}", file=sys.stderr)
         return None
+
+
+def _short_connection_error(exc):
+    """
+    Reduce a urllib3 connection error chain to its human-readable cause
+    ("Connection refused", "Name or service not known", ...).
+    """
+    text = str(exc)
+    if 'CERTIFICATE_VERIFY_FAILED' in text:
+        return "SSL certificate verification failed"
+    match = re.search(r"\[Errno -?\d+\] ([^'\")]+)", text)
+    if match:
+        return match.group(1).strip()
+    return text[:300]
+
+
+def list_models(base_url, api_key):
+    """
+    Fetch model IDs via GET {base_url}/models (OpenAI API format).
+    Returns (models, None) on success or (None, error_message) on failure.
+    Single attempt without retries: the user is waiting for the answer.
+    """
+    url = base_url + "/models"
+    headers = {}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    try:
+        response = requests.get(url, headers=headers, timeout=(5, 15))
+    except requests.exceptions.Timeout:
+        return None, f"Server did not respond: {url}"
+    except requests.exceptions.ConnectionError as e:
+        return None, f"Cannot connect to {url}: {_short_connection_error(e)}"
+    except requests.exceptions.RequestException as e:
+        return None, f"Request to {url} failed: {str(e)[:300]}"
+
+    if response.status_code in (401, 403):
+        return None, f"HTTP {response.status_code} from {url}: access denied, check the API key"
+    if response.status_code == 404:
+        return None, f"HTTP 404: {url} not found, check the base URL (it usually ends with /v1)"
+    if response.status_code != 200:
+        return None, f"HTTP {response.status_code} from {url}: {response.text[:300]}"
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return None, f"{url} returned a non-JSON response, is it an OpenAI-compatible API?"
+
+    # OpenAI format is {"data": [{"id": ...}]}; tolerate {"models": [...]} and bare lists
+    if isinstance(payload, dict):
+        items = payload.get('data')
+        if items is None:
+            items = payload.get('models')
+    else:
+        items = payload
+
+    models = []
+    for item in items if isinstance(items, list) else []:
+        name = (item.get('id') or item.get('name')) if isinstance(item, dict) else item
+        if isinstance(name, str) and name and name not in models:
+            models.append(name)
+    models.sort(key=str.lower)
+    return models, None
+
+
+def list_models_command():
+    """
+    --list-models: print the compatible server's models as JSON to stdout,
+    {"models": [...]} or {"error": "..."}. Returns the process exit code.
+    """
+    base_url = os.environ.get('COMPAT_BASE_URL', '').strip()
+    if not base_url:
+        print(json.dumps({"error": "Server base URL is not set"}))
+        return EXIT_CONFIG_ERROR
+
+    base_url = normalize_base_url(base_url)
+    models, error = list_models(base_url, os.environ.get('COMPAT_API_KEY', '').strip())
+    if error:
+        print(json.dumps({"error": error, "base_url": base_url}))
+        return EXIT_CONFIG_ERROR
+
+    print(json.dumps({"models": models[:MAX_LISTED_MODELS], "total": len(models),
+                      "base_url": base_url}))
+    return EXIT_SUCCESS
 
 
 def transcribe_local(audio_file, server_url, language="auto"):
@@ -275,21 +406,28 @@ def _is_reasoning_model(model):
     return model.startswith('gpt-5.') or model.endswith('-pro')
 
 
-def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
+def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini",
+                    base_url=OPENAI_BASE_URL, label="OpenAI Chat", disable_thinking=False):
     """
-    Process text through OpenAI Chat API with a custom system prompt.
+    Process text through a Chat Completions API with a custom system prompt:
+    POST {base_url}/chat/completions, by default https://api.openai.com/v1/chat/completions.
+    The API key is mandatory for OpenAI only; compatible servers may run without one.
+    disable_thinking turns off reasoning of self-hosted models via the chat
+    template (vLLM / SGLang extension, unknown to OpenAI itself).
     Returns processed text or None on error.
     """
-    if not api_key:
+    if not api_key and base_url == OPENAI_BASE_URL:
         print("ERROR: OPENAI_API_KEY is not set for chat completion", file=sys.stderr)
+        return None
+    if not model:
+        print("ERROR: chat model is not set for chat completion", file=sys.stderr)
         return None
 
     try:
-        url = "https://api.openai.com/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
+        url = base_url + "/chat/completions"
+        headers = {"Content-Type": "application/json"}
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
 
         is_reasoning = _is_reasoning_model(model)
 
@@ -303,19 +441,29 @@ def chat_completion(text, system_prompt, api_key, model="gpt-4o-mini"):
 
         if not is_reasoning:
             payload["temperature"] = 0.3
+        if disable_thinking:
+            payload["chat_template_kwargs"] = {"enable_thinking": False}
 
-        print(f"Chat API request: model={model}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
+        print(f"Chat API request: {url}, model={model}, thinking={'off' if disable_thinking else 'default'}, prompt_len={len(system_prompt)}, text_len={len(text)}", file=sys.stderr)
 
         def build_request():
             return requests.post(url, headers=headers, json=payload, timeout=(10, 60))
 
-        response = _post_with_retry("OpenAI Chat", build_request)
+        response = _post_with_retry(label, build_request)
         if response is None:
             return None
 
         if response.status_code == 200:
             result = response.json()
-            content = result['choices'][0]['message']['content'].strip()
+            content = result['choices'][0]['message']['content'] or ''
+            # Self-hosted reasoning models may put their thinking into the
+            # answer — it must not be pasted. Qwen3 emits <think>…</think>;
+            # DeepSeek-R1, QwQ and Qwen3-Thinking open the tag in the prompt
+            # template, so only the closing </think> reaches the answer.
+            content = re.sub(r'^.*?</think>', '', content, flags=re.DOTALL).strip()
+            if not content:
+                print(f"ERROR: {label}: empty answer from model {model}", file=sys.stderr)
+                return None
             print(f"Chat API: {len(content)} chars received", file=sys.stderr)
             return content
         else:
@@ -465,6 +613,9 @@ def _print_sentinel(key, value):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == '--list-models':
+        sys.exit(list_models_command())
+
     # Get configuration from environment variables
     whisper_mode = os.environ.get('WHISPER_MODE', 'openai').lower()
     language = os.environ.get('WHISPER_LANGUAGE', 'auto')
@@ -480,6 +631,13 @@ def main():
         api_key = os.environ.get('OPENAI_API_KEY', '')
         if not api_key:
             print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
+            sys.exit(EXIT_CONFIG_ERROR)
+    elif whisper_mode == 'openai-compatible':
+        if not os.environ.get('COMPAT_BASE_URL', '').strip():
+            print("ERROR: COMPAT_BASE_URL is not set", file=sys.stderr)
+            sys.exit(EXIT_CONFIG_ERROR)
+        if not os.environ.get('COMPAT_MODEL', '').strip():
+            print("ERROR: COMPAT_MODEL is not set", file=sys.stderr)
             sys.exit(EXIT_CONFIG_ERROR)
     elif whisper_mode == 'local':
         server_url = os.environ.get('WHISPER_LOCAL_URL', '')
@@ -549,6 +707,14 @@ def main():
             if whisper_mode == 'openai':
                 api_key = os.environ.get('OPENAI_API_KEY', '')
                 text = transcribe_openai(temp_audio, api_key, language, openai_model)
+            elif whisper_mode == 'openai-compatible':
+                text = transcribe_openai_compatible(
+                    temp_audio,
+                    normalize_base_url(os.environ.get('COMPAT_BASE_URL', '')),
+                    os.environ.get('COMPAT_API_KEY', '').strip(),
+                    language,
+                    os.environ.get('COMPAT_MODEL', '').strip()
+                )
             elif whisper_mode == 'local':
                 server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
                 text = transcribe_local(temp_audio, server_url, language)
@@ -568,8 +734,19 @@ def main():
 
         if custom_prompt:
             print(f"Custom prompt mode: chat_model={chat_model}, prompt_len={len(custom_prompt)}", file=sys.stderr)
-            api_key = os.environ.get('OPENAI_API_KEY', '')
-            processed = chat_completion(text, custom_prompt, api_key, chat_model)
+            if whisper_mode == 'openai-compatible':
+                processed = chat_completion(
+                    text, custom_prompt,
+                    os.environ.get('COMPAT_API_KEY', '').strip(),
+                    chat_model.strip(),
+                    base_url=normalize_base_url(os.environ.get('COMPAT_BASE_URL', '')),
+                    label="OpenAI-compatible chat",
+                    # Reasoning is off unless allowed: a voice keyboard can't wait a minute
+                    disable_thinking=os.environ.get('COMPAT_ENABLE_THINKING', '') != '1'
+                )
+            else:
+                api_key = os.environ.get('OPENAI_API_KEY', '')
+                processed = chat_completion(text, custom_prompt, api_key, chat_model)
             if not processed:
                 # Chat API failed — preserve transcribed text so applet can retry
                 # just the chat step without re-running Whisper.

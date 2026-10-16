@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Voice Keyboard Perlover** is a Cinnamon desktop applet providing voice-to-text input using OpenAI Whisper API or local Whisper servers. Two main components:
+**Voice Keyboard Perlover** is a Cinnamon desktop applet providing voice-to-text input using OpenAI Whisper API, OpenAI-compatible servers or local Whisper servers. Two main components:
 - **Cinnamon Applet** (`applet/voice-keyboard@perlover/applet.js`) - GJS/JavaScript UI
 - **Python Script** (`scripts/whisper-voice-input`) - Audio recording and transcription
 
@@ -88,7 +88,7 @@ Key state transitions:
 
 1. Applet spawns Python script with environment variables (config)
 2. Script records via ffmpeg until SIGTERM or max duration
-3. Script transcribes via OpenAI API or local server
+3. Script transcribes via OpenAI API, an OpenAI-compatible server or a local server
 4. Script pastes text using xclip + xdotool (CLIPBOARD + PRIMARY + Shift+Insert)
 5. Script exits with status code, applet handles result
 
@@ -144,7 +144,8 @@ GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, s
 - Uses ffmpeg with `-f pulse` for audio (works with PulseAudio and PipeWire)
 - Audio format: M4A/AAC at 16kHz mono for fast API uploads
 - Text pasting: xclip to both CLIPBOARD and PRIMARY selections, then xdotool Shift+Insert
-- Environment variables for config: `WHISPER_MODE`, `OPENAI_API_KEY`, `OPENAI_MODEL`, `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `CUSTOM_PROMPT`, `CHAT_MODEL`
+- Environment variables for config: `WHISPER_MODE` (`openai` / `openai-compatible` / `local`), `OPENAI_API_KEY`, `OPENAI_MODEL`, `COMPAT_BASE_URL`, `COMPAT_API_KEY`, `COMPAT_MODEL`, `COMPAT_ENABLE_THINKING` (unless `1`, prompt requests carry `chat_template_kwargs: {enable_thinking: false}`), `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `CUSTOM_PROMPT`, `CHAT_MODEL` (in `openai-compatible` mode the chat request goes to `COMPAT_BASE_URL` with `COMPAT_API_KEY`)
+- `whisper-voice-input --list-models` prints the OpenAI-compatible server's models as JSON (`{"models": [...]}` or `{"error": "..."}`); used by the "Check Connection" settings button
 
 ## Version Updates
 

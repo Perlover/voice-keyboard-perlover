@@ -23,7 +23,7 @@ Recommends: gir1.2-gkbd-3.0,
 Description: Cinnamon applet with voice input via Whisper
  This package provides a Cinnamon panel applet that combines keyboard
  layout switching functionality with voice input capabilities powered
- by OpenAI Whisper or local Whisper servers.
+ by OpenAI Whisper, OpenAI-compatible servers or local Whisper servers.
  .
  Features:
   - Keyboard layout indicator and switcher

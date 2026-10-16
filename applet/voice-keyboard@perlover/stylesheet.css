@@ -18,3 +18,18 @@
     font-weight: bold;
     padding-right: 2px;
 }
+
+/* Model list in the "Check Connection" dialog (OpenAI-compatible mode) */
+.voice-keyboard-model-item {
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+.voice-keyboard-model-item:hover,
+.voice-keyboard-model-item:focus {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.voice-keyboard-model-current {
+    font-weight: bold;
+}

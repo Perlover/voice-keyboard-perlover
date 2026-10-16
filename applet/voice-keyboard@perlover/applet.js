@@ -42,6 +42,21 @@ const EXIT_PASTE_ERROR = 7;
 const PROCESSING_WATCHDOG_MS = 150000;
 const PROCESSING_WATCHDOG_CUSTOM_PROMPT_MS = 240000;
 
+// The OpenAI models API doesn't say what a model can do — the model picker of
+// the OpenAI-compatible mode can only guess by name to sort the list.
+const SPEECH_MODEL_PATTERN = /whisper|transcri|speech|stt|asr|audio|voice/i;
+// Embedding, reranking, TTS and image models can't process text prompts
+const NON_CHAT_MODEL_PATTERN = /embed|bge|rerank|tts|dall-e|image|moderation/i;
+
+/**
+ * Does the model name look fit for the purpose: chat (custom prompts) or
+ * speech-to-text (transcription)?
+ */
+function modelFitsPurpose(name, forChat) {
+    var isSpeech = SPEECH_MODEL_PATTERN.test(name);
+    return forChat ? (!isSpeech && !NON_CHAT_MODEL_PATTERN.test(name)) : isSpeech;
+}
+
 function VoiceKeyboardApplet(metadata, orientation, panel_height, instance_id) {
     this._init(metadata, orientation, panel_height, instance_id);
 }
@@ -84,6 +99,11 @@ VoiceKeyboardApplet.prototype = {
         this.settings.bind("openai-api-key", "openaiApiKey");
         this.settings.bind("openai-model", "openaiModel");
         this.settings.bind("local-url", "localUrl");
+        this.settings.bind("compat-base-url", "compatBaseUrl");
+        this.settings.bind("compat-api-key", "compatApiKey");
+        this.settings.bind("compat-model", "compatModel");
+        this.settings.bind("compat-chat-model", "compatChatModel");
+        this.settings.bind("compat-enable-thinking", "compatEnableThinking");
         this.settings.bind("language", "language");
         this.settings.bind("recording-duration", "recordingDuration");
         this.settings.bind("script-path", "scriptPath");
@@ -124,8 +144,8 @@ VoiceKeyboardApplet.prototype = {
         this.menu.removeAll();
         this._debug("Rebuilding menu: mode=" + this.whisperMode + ", prompts=" + (this.customPrompts ? this.customPrompts.length : 0));
 
-        // Custom prompts (only in OpenAI mode)
-        if (this.whisperMode === 'openai' && this.customPrompts && this.customPrompts.length > 0) {
+        // Custom prompts (need a chat backend: OpenAI or a compatible server)
+        if (this.whisperMode !== 'local' && this.customPrompts && this.customPrompts.length > 0) {
             var hasPrompts = false;
             for (var i = 0; i < this.customPrompts.length; i++) {
                 var prompt = this.customPrompts[i];
@@ -185,12 +205,25 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
+     * Chat model for custom prompts in the current mode
+     */
+    _getChatModel: function() {
+        if (this.whisperMode === 'openai-compatible') {
+            return (this.compatChatModel || '').trim();
+        }
+        return this.chatModel || 'gpt-4o-mini';
+    },
+
+    /**
      * Validate configuration before starting recording
      * Task 1.4: Configuration validation function
      */
     validateConfiguration: function() {
         if (this.whisperMode === 'openai') {
             return this.openaiApiKey && this.openaiApiKey.trim() !== '';
+        } else if (this.whisperMode === 'openai-compatible') {
+            return this.compatBaseUrl && this.compatBaseUrl.trim() !== '' &&
+                   this.compatModel && this.compatModel.trim() !== '';
         } else if (this.whisperMode === 'local') {
             return this.localUrl && this.localUrl.trim() !== '';
         }
@@ -523,7 +556,7 @@ VoiceKeyboardApplet.prototype = {
         var envp = this._buildBaseEnvp();
         if (ctx.customPrompt) {
             envp.push('CUSTOM_PROMPT=' + ctx.customPrompt.prompt);
-            envp.push('CHAT_MODEL=' + (this.chatModel || 'gpt-4o-mini'));
+            envp.push('CHAT_MODEL=' + this._getChatModel());
         }
         if (ctx.exitCode === EXIT_CHAT_ERROR && ctx.textFile) {
             envp.push('RETRY_CHAT_FROM=' + ctx.textFile);
@@ -716,6 +749,11 @@ VoiceKeyboardApplet.prototype = {
         if (this.whisperMode === 'openai') {
             envp.push('OPENAI_API_KEY=' + this.openaiApiKey);
             envp.push('OPENAI_MODEL=' + (this.openaiModel || 'whisper-1'));
+        } else if (this.whisperMode === 'openai-compatible') {
+            envp.push('COMPAT_BASE_URL=' + this.compatBaseUrl);
+            envp.push('COMPAT_API_KEY=' + (this.compatApiKey || ''));
+            envp.push('COMPAT_MODEL=' + this.compatModel);
+            envp.push('COMPAT_ENABLE_THINKING=' + (this.compatEnableThinking ? '1' : '0'));
         } else if (this.whisperMode === 'local') {
             envp.push('WHISPER_LOCAL_URL=' + this.localUrl);
         }
@@ -958,14 +996,24 @@ VoiceKeyboardApplet.prototype = {
             );
             return;
         }
-        this._debug("Custom prompt recording: name=" + promptData.name + ", chatModel=" + this.chatModel);
+        if (this._getChatModel() === '') {
+            // Compatible server without a chat model: prompts are listed but
+            // can't run yet — point the user to the setting instead
+            Main.notify(
+                "Voice Keyboard Perlover",
+                _("Choose a chat model for prompts in the settings")
+            );
+            Util.spawnCommandLine("xlet-settings applet " + this.metadata.uuid + " -i " + this.instance_id);
+            return;
+        }
+        this._debug("Custom prompt recording: name=" + promptData.name + ", chatModel=" + this._getChatModel());
         // Starting fresh — drop any preserved retry artifact from a previous run
         this._clearRetryContext();
         this._activeCustomPrompt = promptData;
         this.setState(STATE_RECORDING);
         var envp = this._buildBaseEnvp();
         envp.push('CUSTOM_PROMPT=' + promptData.prompt);
-        envp.push('CHAT_MODEL=' + (this.chatModel || 'gpt-4o-mini'));
+        envp.push('CHAT_MODEL=' + this._getChatModel());
         this._spawnScript(envp);
     },
 
@@ -1078,11 +1126,12 @@ VoiceKeyboardApplet.prototype = {
 
     /**
      * Run an async command and capture stdout
+     * @param {Array} envp - optional environment (null inherits Cinnamon's)
      */
-    _runCommandAsync: function(argv, callback) {
+    _runCommandAsync: function(argv, callback, envp) {
         try {
             var [success, pid, stdin_fd, stdout_fd, stderr_fd] = GLib.spawn_async_with_pipes(
-                null, argv, null,
+                null, argv, envp || null,
                 GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
                 null
             );
@@ -1264,7 +1313,11 @@ VoiceKeyboardApplet.prototype = {
      * Check if export data contains API key and show warning
      */
     _checkApiKeyWarning: function(exportData) {
-        if (exportData.settings['openai-api-key'] && exportData.settings['openai-api-key'].trim() !== '') {
+        var hasKey = function(key) {
+            var value = exportData.settings[key];
+            return value && value.trim() !== '';
+        };
+        if (hasKey('openai-api-key') || hasKey('compat-api-key')) {
             Main.notify(
                 "Voice Keyboard Perlover",
                 _("Warning: exported data contains your API key. Keep it secure!")
@@ -1405,6 +1458,212 @@ VoiceKeyboardApplet.prototype = {
                 }));
             })
         );
+    },
+
+    /**
+     * "Check Connection and Choose Transcription Model" button
+     */
+    onCheckCompatConnection: function() {
+        this._showCompatModelPicker('compat-model');
+    },
+
+    /**
+     * "Choose Chat Model for Prompts" button
+     */
+    onChooseCompatChatModel: function() {
+        this._showCompatModelPicker('compat-chat-model');
+    },
+
+    /**
+     * OpenAI-compatible mode: ask the Python script for the server's model
+     * list and let the user pick a model with a click. The pick is saved to
+     * settingKey (compat-model or compat-chat-model); an open settings window
+     * picks it up through its file monitor.
+     */
+    _showCompatModelPicker: function(settingKey) {
+        var forChat = (settingKey === 'compat-chat-model');
+        var baseUrl = (this.compatBaseUrl || '').trim();
+        if (baseUrl === '') {
+            Main.notify("Voice Keyboard Perlover", _("Enter the server URL first"));
+            return;
+        }
+
+        var dialog = new ModalDialog.ModalDialog();
+        // The request may outlive the dialog — results for a closed dialog are dropped
+        var dialogClosed = false;
+        dialog.connect('closed', function() {
+            dialogClosed = true;
+        });
+
+        var contentBox = new St.BoxLayout({
+            vertical: true,
+            style_class: 'modal-dialog-content-box',
+            style: 'min-width: 420px; max-width: 640px;'
+        });
+
+        var titleLabel = new St.Label({
+            text: _("Server Connection"),
+            style: 'font-weight: bold; font-size: 14px; margin-bottom: 10px;'
+        });
+        contentBox.add(titleLabel);
+
+        var statusLabel = new St.Label({
+            text: _("Connecting to %s...").replace("%s", baseUrl),
+            style: 'margin-bottom: 10px;'
+        });
+        statusLabel.clutter_text.line_wrap = true;
+        contentBox.add(statusLabel);
+
+        dialog.contentLayout.add(contentBox);
+
+        dialog.setButtons([
+            {
+                label: _("Close"),
+                key: Clutter.KEY_Escape,
+                action: function() {
+                    dialogClosed = true;
+                    dialog.close();
+                }
+            }
+        ]);
+
+        dialog.open();
+
+        var envp = GLib.get_environ();
+        // An outdated script without --list-models ignores argv; the mode below
+        // is unknown to it, so it exits instead of starting a recording.
+        envp.push('WHISPER_MODE=openai-compatible');
+        envp.push('COMPAT_BASE_URL=' + baseUrl);
+        envp.push('COMPAT_API_KEY=' + (this.compatApiKey || '').trim());
+
+        this._runCommandAsync([this.scriptPath, '--list-models'], Lang.bind(this, function(success, output) {
+            if (dialogClosed) return;
+            this._debug("list-models: success=" + success + ", output=" + output);
+
+            var result = null;
+            try {
+                result = JSON.parse(output);
+            } catch (e) {
+                result = null;
+            }
+
+            if (!result || (!result.error && !Array.isArray(result.models))) {
+                titleLabel.set_text(_("Connection failed"));
+                statusLabel.set_text(_("Unexpected response from %s. Make sure the package is fully updated.").replace("%s", this.scriptPath));
+                statusLabel.set_style('color: #ff8800; margin-bottom: 10px;');
+                return;
+            }
+
+            if (result.error) {
+                titleLabel.set_text(_("Connection failed"));
+                statusLabel.set_text(result.error);
+                statusLabel.set_style('color: #ff8800; margin-bottom: 10px;');
+                return;
+            }
+
+            if (result.models.length === 0) {
+                statusLabel.set_text(_("Connected, but the server returned no models. Enter the model name manually."));
+                return;
+            }
+
+            var total = result.total || result.models.length;
+            statusLabel.set_text(
+                _("Connected. Models available: %d").replace("%d", total) + "\n" +
+                (total > result.models.length
+                    ? _("Showing the first %d models; type any other name in the settings.").replace("%d", result.models.length) + "\n"
+                    : "") +
+                (forChat ? _("Click a model to use it for AI prompts.")
+                         : _("Click a model to use it for transcription."))
+            );
+            // A key restricted to some models lists only those — warn when none fits
+            var anyFits = result.models.some(function(name) {
+                return modelFitsPurpose(name, forChat);
+            });
+            if (!anyFits) {
+                var warningLabel = new St.Label({
+                    text: forChat
+                        ? _("None of these models looks like a chat model. The API key may not have access to chat models on this server.")
+                        : _("None of these models looks like a speech recognition model. The API key may not have access to it on this server."),
+                    style: 'color: #ff8800; margin-bottom: 10px;'
+                });
+                warningLabel.clutter_text.line_wrap = true;
+                contentBox.add(warningLabel);
+            }
+            var currentModel = (this.settings.getValue(settingKey) || '').trim();
+            contentBox.add(this._buildModelList(result.models, currentModel, forChat,
+                Lang.bind(this, function(model) {
+                    dialogClosed = true;
+                    dialog.close();
+                    this.settings.setValue(settingKey, model);
+                    var message = forChat ? _("Chat model for prompts set: %s")
+                                          : _("Transcription model set: %s");
+                    Main.notify("Voice Keyboard Perlover", message.replace("%s", model));
+                })
+            ), { x_fill: true });
+        }), envp);
+    },
+
+    /**
+     * Build a scrollable list of clickable model names for the connection
+     * dialog. Models that fit the purpose (speech-to-text or chat) go first
+     * so the right one is easy to spot among dozens of others.
+     */
+    _buildModelList: function(models, currentModel, forChat, onPick) {
+        var preferredModels = [];
+        var otherModels = [];
+        for (var i = 0; i < models.length; i++) {
+            if (modelFitsPurpose(models[i], forChat)) {
+                preferredModels.push(models[i]);
+            } else {
+                otherModels.push(models[i]);
+            }
+        }
+
+        var listBox = new St.BoxLayout({ vertical: true });
+        // Section headers only make sense when both groups are present
+        var showHeaders = preferredModels.length > 0 && otherModels.length > 0;
+
+        var createItem = function(name) {
+            var isCurrent = (name === currentModel);
+            var button = new St.Button({
+                style_class: 'voice-keyboard-model-item',
+                can_focus: true,
+                reactive: true,
+                x_fill: true
+            });
+            if (isCurrent) {
+                button.add_style_class_name('voice-keyboard-model-current');
+            }
+            button.set_child(new St.Label({ text: (isCurrent ? '✓ ' : '') + name }));
+            button.connect('clicked', function() {
+                onPick(name);
+            });
+            return button;
+        };
+
+        var addSection = function(title, names) {
+            if (names.length === 0) return;
+            if (showHeaders) {
+                listBox.add(new St.Label({
+                    text: title,
+                    style: 'font-weight: bold; margin: 8px 0 4px 0;'
+                }));
+            }
+            for (var j = 0; j < names.length; j++) {
+                listBox.add(createItem(names[j]), { x_fill: true });
+            }
+        };
+
+        addSection(forChat ? _("Chat models") : _("Speech recognition models"), preferredModels);
+        addSection(_("Other models"), otherModels);
+
+        var scrollView = new St.ScrollView({
+            hscrollbar_policy: St.PolicyType.NEVER,
+            vscrollbar_policy: St.PolicyType.AUTOMATIC,
+            style: 'max-height: 360px;'
+        });
+        scrollView.add_actor(listBox);
+        return scrollView;
     },
 
     on_applet_removed_from_panel: function() {

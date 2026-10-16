@@ -109,8 +109,8 @@ msgid "Local Server"
 msgstr "Lokaler Server"
 
 #. settings-schema.json
-msgid "Choose between OpenAI API or local Whisper server"
-msgstr "Wählen Sie zwischen OpenAI API oder lokalem Whisper-Server"
+msgid "Choose OpenAI API, any server with an OpenAI-compatible API (e.g., your own inference hub) or a local Whisper server"
+msgstr "Wählen Sie die OpenAI API, einen beliebigen Server mit OpenAI-kompatibler API (z. B. Ihren eigenen Inference Hub) oder einen lokalen Whisper-Server"
 
 #. settings-schema.json
 msgid "OpenAI API Key"
@@ -143,6 +143,66 @@ msgstr "URL des lokalen Whisper-Servers"
 #. settings-schema.json
 msgid "URL of your local Whisper server (e.g., faster-whisper-server)"
 msgstr "URL Ihres lokalen Whisper-Servers (z.B. faster-whisper-server)"
+
+#. settings-schema.json
+msgid "OpenAI-compatible Server"
+msgstr "OpenAI-kompatibler Server"
+
+#. settings-schema.json
+msgid "Server Base URL"
+msgstr "Basis-URL des Servers"
+
+#. settings-schema.json
+msgid "Base URL of the OpenAI-compatible API, usually ending with /v1 (e.g., https://hub.example.com/v1)"
+msgstr "Basis-URL der OpenAI-kompatiblen API, endet meist auf /v1 (z. B. https://hub.example.com/v1)"
+
+#. settings-schema.json
+msgid "Server API Key"
+msgstr "API-Schlüssel des Servers"
+
+#. settings-schema.json
+msgid "API key for the server. Leave empty if the server does not require authentication"
+msgstr "API-Schlüssel für den Server. Leer lassen, wenn der Server keine Authentifizierung erfordert"
+
+#. settings-schema.json
+msgid "Transcription Model"
+msgstr "Transkriptionsmodell"
+
+#. settings-schema.json
+msgid "Model name exactly as the server knows it. Use 'Check Connection' to pick it from the server's list"
+msgstr "Modellname genau so, wie ihn der Server kennt. Mit „Verbindung prüfen“ aus der Liste des Servers auswählen"
+
+#. settings-schema.json
+msgid "Check Connection and Choose Transcription Model..."
+msgstr "Verbindung prüfen und Transkriptionsmodell wählen..."
+
+#. settings-schema.json
+msgid "Connect to the server, show the list of available models and pick one with a click"
+msgstr "Mit dem Server verbinden, verfügbare Modelle anzeigen und eines per Klick auswählen"
+
+#. settings-schema.json
+msgid "Chat Model (for prompts)"
+msgstr "Chat-Modell (für Prompts)"
+
+#. settings-schema.json
+msgid "Chat model on the server for processing recognized text with custom prompts"
+msgstr "Chat-Modell auf dem Server zur Verarbeitung des erkannten Textes mit eigenen Prompts"
+
+#. settings-schema.json
+msgid "Choose Chat Model for Prompts..."
+msgstr "Chat-Modell für Prompts wählen..."
+
+#. settings-schema.json
+msgid "Connect to the server, show the list of available models and pick the chat model for custom prompts with a click"
+msgstr "Mit dem Server verbinden, verfügbare Modelle anzeigen und das Chat-Modell für Prompts per Klick auswählen"
+
+#. settings-schema.json
+msgid "Allow reasoning (thinking) of the chat model"
+msgstr "Reasoning (Thinking) des Chat-Modells erlauben"
+
+#. settings-schema.json
+msgid "Off (recommended): reasoning models (Qwen3 and similar) answer many times faster, the request carries chat_template_kwargs: {\"enable_thinking\": false}, supported by vLLM and SGLang. On: the model decides itself and the field is not sent; also turn it on if the server rejects prompt requests"
+msgstr "Aus (empfohlen): Reasoning-Modelle (Qwen3 u. ä.) antworten um ein Vielfaches schneller, die Anfrage enthält chat_template_kwargs: {\"enable_thinking\": false}, unterstützt von vLLM und SGLang. Ein: Das Modell entscheidet selbst, das Feld wird nicht gesendet; auch einschalten, wenn der Server Prompt-Anfragen ablehnt"
 
 #. settings-schema.json
 msgid "Recognition language"
@@ -360,3 +420,74 @@ msgstr "Datei konnte nicht gelesen werden"
 msgid "Invalid settings file format"
 msgstr "Ungültiges Einstellungsdateiformat"
 
+#. applet.js - compatible server connection dialog
+msgid "Enter the server URL first"
+msgstr "Bitte zuerst die Server-URL eingeben"
+
+#. applet.js - compatible server connection dialog
+msgid "Server Connection"
+msgstr "Serververbindung"
+
+#. applet.js - compatible server connection dialog
+msgid "Connecting to %s..."
+msgstr "Verbinde mit %s..."
+
+#. applet.js - compatible server connection dialog
+msgid "Connection failed"
+msgstr "Verbindung fehlgeschlagen"
+
+#. applet.js - compatible server connection dialog
+msgid "Unexpected response from %s. Make sure the package is fully updated."
+msgstr "Unerwartete Antwort von %s. Stellen Sie sicher, dass das Paket vollständig aktualisiert ist."
+
+#. applet.js - compatible server connection dialog
+msgid "Connected, but the server returned no models. Enter the model name manually."
+msgstr "Verbunden, aber der Server hat keine Modelle geliefert. Geben Sie den Modellnamen manuell ein."
+
+#. applet.js - compatible server connection dialog
+msgid "Connected. Models available: %d"
+msgstr "Verbunden. Verfügbare Modelle: %d"
+
+#. applet.js - compatible server connection dialog
+msgid "Click a model to use it for transcription."
+msgstr "Klicken Sie auf ein Modell, um es für die Transkription zu verwenden."
+
+#. applet.js - compatible server connection dialog
+msgid "Transcription model set: %s"
+msgstr "Transkriptionsmodell: %s"
+
+#. applet.js - compatible server connection dialog
+msgid "Speech recognition models"
+msgstr "Spracherkennungsmodelle"
+
+#. applet.js - compatible server connection dialog
+msgid "Other models"
+msgstr "Andere Modelle"
+
+#. applet.js - compatible server connection dialog
+msgid "Click a model to use it for AI prompts."
+msgstr "Klicken Sie auf ein Modell, um es für KI-Prompts zu verwenden."
+
+#. applet.js - compatible server connection dialog
+msgid "Chat model for prompts set: %s"
+msgstr "Chat-Modell für Prompts: %s"
+
+#. applet.js - compatible server connection dialog
+msgid "Chat models"
+msgstr "Chat-Modelle"
+
+#. applet.js - notification
+msgid "Choose a chat model for prompts in the settings"
+msgstr "Wählen Sie in den Einstellungen ein Chat-Modell für Prompts"
+
+#. applet.js - compatible server connection dialog
+msgid "None of these models looks like a chat model. The API key may not have access to chat models on this server."
+msgstr "Keines dieser Modelle sieht wie ein Chat-Modell aus. Möglicherweise hat der API-Schlüssel auf diesem Server keinen Zugriff auf Chat-Modelle."
+
+#. applet.js - compatible server connection dialog
+msgid "None of these models looks like a speech recognition model. The API key may not have access to it on this server."
+msgstr "Keines dieser Modelle sieht wie ein Spracherkennungsmodell aus. Möglicherweise hat der API-Schlüssel auf diesem Server keinen Zugriff darauf."
+
+#. applet.js - compatible server connection dialog
+msgid "Showing the first %d models; type any other name in the settings."
+msgstr "Es werden die ersten %d Modelle angezeigt; jeden anderen Namen können Sie in den Einstellungen eingeben."

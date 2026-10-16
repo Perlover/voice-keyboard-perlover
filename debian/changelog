@@ -1,3 +1,24 @@
+voice-keyboard-perlover (1.10.0-1) noble; urgency=medium
+
+  * New transcription mode "OpenAI-compatible Server": any server with the
+    OpenAI audio API (own inference hub, LiteLLM, vLLM, LocalAI, speaches)
+    with base URL, optional API key and a free-text model name
+  * "Check Connection and Choose Transcription Model" button: lists the
+    server's models (GET /v1/models) in a dialog, a click fills the model
+    field; likely speech-to-text models are listed first
+  * Custom prompts work in the new mode too: the same prompt list, sent to
+    the server's /v1/chat/completions with a chat model picked the same way
+  * Reasoning of chat models is off by default in the new mode
+    (chat_template_kwargs enable_thinking=false for vLLM/SGLang), a switch
+    allows it; the model's thinking (up to </think>) is never pasted
+  * The connection dialog explains a wrong URL, key, SSL certificate or
+    unreachable server, and warns when the key lists no model fit for the
+    purpose (gateways like LiteLLM list only the models a key may use)
+  * whisper-voice-input --list-models prints the server's models as JSON
+  * i18n: new strings translated to 6 languages (ru, es, de, fr, zh, ja)
+
+ -- perlover <perlover@perlover.com>  Fri, 16 Oct 2026 16:50:00 +0200
+
 voice-keyboard-perlover (1.9.1-1) noble; urgency=medium
 
   * Fix settings dialog not opening on Cinnamon 6.6 (Linux Mint 22.3)
