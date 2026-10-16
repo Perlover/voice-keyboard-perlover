@@ -2,7 +2,6 @@
 
 /**
  * Integration Tests for Click-to-Toggle Feature
- * Task Group 6.5: Write up to 10 strategic integration tests
  *
  * These tests focus on complete end-to-end workflows and critical user scenarios
  */

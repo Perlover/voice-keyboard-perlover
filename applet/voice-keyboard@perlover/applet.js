@@ -113,7 +113,7 @@ VoiceKeyboardApplet.prototype = {
         // Set icon
         this.set_applet_icon_symbolic_name("audio-input-microphone-symbolic");
 
-        // Task 2.5: Update tooltip to reflect new click behavior
+        // Tooltip describes the click behavior
         this.set_applet_tooltip(_("Voice Keyboard - Left-click to start/stop recording, Right-click for settings"));
 
         // Create menu
@@ -216,7 +216,6 @@ VoiceKeyboardApplet.prototype = {
 
     /**
      * Validate configuration before starting recording
-     * Task 1.4: Configuration validation function
      */
     validateConfiguration: function() {
         if (this.whisperMode === 'openai') {
@@ -231,7 +230,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 3.2: Implement setIdleIcon() function
      * Set IDLE state icon and clear any animations/errors
      * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
@@ -316,27 +314,24 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 4.2: Create 8-dot circular loading indicator component
-     * Task 4.3: Implement startProcessingAnimation() function
-     * Task 2.2: Change icon to cloud-upload
-     * Task 2.5: Use new ease-based animation
+     * Switch to the upload icon and start the processing animation
      */
     startProcessingAnimation: function() {
         // Clean up existing animation if any
         this._cleanupLoadingDots();
 
-        // Task 2.2: Change icon to send-to-symbolic (upload arrow)
+        // Upload arrow icon
         this.set_applet_icon_symbolic_name("send-to-symbolic");
 
         // Mark animation as active
         this.processingAnimation = true;
 
-        // Task 2.5: Start the processing timeline animation
+        // Start the processing timeline animation
         this._startProcessingTimeline();
     },
 
     /**
-     * Task 2.3: Processing animation using Mainloop.timeout_add
+     * Processing animation using GLib.timeout_add
      * Simple step-based animation with 100ms intervals
      * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
@@ -394,7 +389,7 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 2.4: Stop processing animation
+     * Stop processing animation
      */
     _stopProcessingTimeline: function() {
         if (this._processingTimeoutId) {
@@ -423,7 +418,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 4.4: Implement showErrorIcon() function
      * Replace microphone icon with red warning triangle
      * Note: Scale animations removed to prevent Cinnamon HotCorner layout conflicts
      */
@@ -576,7 +570,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 4.5: Implement showErrorDialog() function
      * Show modal dialog with error details
      */
     showErrorDialog: function() {
@@ -622,7 +615,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 4.6: Implement cancelTranscription() function
      * Kill Python process and transition to IDLE state silently
      */
     cancelTranscription: function() {
@@ -646,30 +638,17 @@ VoiceKeyboardApplet.prototype = {
 
     /**
      * Set the current state and handle transitions
-     * Task 1.3: Implement setState() function
-     * Task 3.4: Enhanced with animation cleanup
-     * Task 4.7: Enhanced with processing animation and error overlay cleanup
-     * Task 3.3: Verify cleanup methods are called
      */
     setState: function(newState) {
-        // Task 3.4: Clean up recording animation before state change
+        // Clean up recording animation before state change
         if (this.recordingAnimation) {
             this.stopRecordingAnimation();
         }
 
-        // Task 4.7: Clean up processing animation before state change
+        // Clean up processing animation before state change
         if (this.processingAnimation || this.currentState === STATE_PROCESSING) {
             this._cleanupLoadingDots();
             this.processingAnimation = null;
-        }
-
-        // Cancel any running processes if transitioning away from RECORDING or PROCESSING
-        if (this.currentState === STATE_RECORDING && newState !== STATE_RECORDING) {
-            // Will be implemented in Task Group 3
-        }
-
-        if (this.currentState === STATE_PROCESSING && newState !== STATE_PROCESSING) {
-            // Already handled by cancelTranscription
         }
 
         // Update state
@@ -693,7 +672,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 2.2: Implement handleLeftClick() function
      * Handle left-click behavior based on current state
      */
     handleLeftClick: function() {
@@ -1018,7 +996,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 3.6: Implement stopRecording() function
      * Stop recording and transition to processing state
      */
     stopRecording: function() {
@@ -1100,7 +1077,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 2.3: Override on_applet_clicked() for left-click
      * Replace menu toggle with call to handleLeftClick()
      */
     on_applet_clicked: function(event) {
@@ -1108,7 +1084,6 @@ VoiceKeyboardApplet.prototype = {
     },
 
     /**
-     * Task 2.4: Implement _onButtonPressEvent() for right-click detection
      * Show settings menu on right-click only
      */
     _onButtonPressEvent: function(actor, event) {

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task 5.1: Tests for Python Script Modifications
+Tests for scripts/whisper-voice-input
 Test text pasting, window tracking, maximum duration, clipboard operations, and exit codes
 """
 
@@ -25,7 +25,7 @@ SCRIPT_PATH = Path(__file__).parent.parent / "scripts" / "whisper-voice-input"
 
 
 class TestPythonScriptModifications(unittest.TestCase):
-    """Test suite for Python script modifications in Task Group 5"""
+    """Tests for scripts/whisper-voice-input"""
 
     def setUp(self):
         """Set up test environment"""
@@ -55,7 +55,7 @@ class TestPythonScriptModifications(unittest.TestCase):
 
     def test_active_window_tracking_functions(self):
         """
-        Task 5.3: Test that active window tracking functions exist
+        Test that active window tracking functions exist
         Verify get_active_window() function is implemented
         """
         with open(self.script_path, 'r') as f:
@@ -87,7 +87,7 @@ class TestPythonScriptModifications(unittest.TestCase):
 
     def test_maximum_duration_handling(self):
         """
-        Task 5.5: Test that maximum duration is handled correctly
+        Test that maximum duration is handled correctly
         Verify record_audio_user_controlled uses max_duration parameter
         """
         with open(self.script_path, 'r') as f:
@@ -110,7 +110,7 @@ class TestPythonScriptModifications(unittest.TestCase):
 
     def test_exit_codes_defined(self):
         """
-        Task 5.6: Test that exit code system is properly defined
+        Test that exit code system is properly defined
         Verify all required exit codes are defined
         """
         with open(self.script_path, 'r') as f:
@@ -606,7 +606,7 @@ def run_tests():
     result = runner.run(suite)
 
     print("\n" + "=" * 70)
-    print(f"Task Group 5 Python Script Tests Summary:")
+    print("Python Script Tests Summary:")
     print(f"Tests run: {result.testsRun}")
     print(f"Failures: {len(result.failures)}")
     print(f"Errors: {len(result.errors)}")

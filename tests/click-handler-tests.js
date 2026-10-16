@@ -2,7 +2,6 @@
 
 /**
  * Click Handler Tests
- * Task Group 2.1: Write 2-8 focused tests for click handlers
  */
 
 const GLib = imports.gi.GLib;

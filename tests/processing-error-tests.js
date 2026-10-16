@@ -2,7 +2,6 @@
 
 /**
  * PROCESSING & ERROR States Tests
- * Task Group 4.1: Write 2-8 focused tests for PROCESSING/ERROR states
  */
 
 const GLib = imports.gi.GLib;

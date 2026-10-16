@@ -1,7 +1,6 @@
 #!/bin/bash
 #
-# Run All Tests for Click-to-Toggle Feature
-# Task Group 6.6: Run feature-specific tests only
+# Run all automated tests (GJS + Python)
 #
 
 set -e
@@ -10,7 +9,7 @@ TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_ROOT="$(dirname "$TESTS_DIR")"
 
 echo "========================================="
-echo "Running Click-to-Toggle Feature Tests"
+echo "Running Voice Keyboard Tests"
 echo "========================================="
 echo ""
 
@@ -47,30 +46,19 @@ run_test() {
     TOTAL_TESTS=$((TOTAL_TESTS + 1))
 }
 
-# Run Task Group 1: State Machine Tests
-run_test "Task Group 1: State Machine Foundation" "$TESTS_DIR/state-machine-tests.js" "gjs"
-
-# Run Task Group 2: Click Handler Tests
-run_test "Task Group 2: Click Handlers" "$TESTS_DIR/click-handler-tests.js" "gjs"
-
-# Run Task Group 3: IDLE & RECORDING Tests
-run_test "Task Group 3: IDLE & RECORDING States" "$TESTS_DIR/idle-recording-tests.js" "gjs"
-
-# Run Task Group 4: PROCESSING & ERROR Tests
-run_test "Task Group 4: PROCESSING & ERROR States" "$TESTS_DIR/processing-error-tests.js" "gjs"
-
-# Run Task Group 5: Python Script Tests
-run_test "Task Group 5: Python Script Modifications" "$TESTS_DIR/test_python_script_modifications.py" "python"
-
-# Run Task Group 6: Integration Tests
-run_test "Task Group 6: Integration Tests" "$TESTS_DIR/integration-tests.js" "gjs"
+run_test "State Machine Foundation" "$TESTS_DIR/state-machine-tests.js" "gjs"
+run_test "Click Handlers" "$TESTS_DIR/click-handler-tests.js" "gjs"
+run_test "IDLE & RECORDING States" "$TESTS_DIR/idle-recording-tests.js" "gjs"
+run_test "PROCESSING & ERROR States" "$TESTS_DIR/processing-error-tests.js" "gjs"
+run_test "Python Script" "$TESTS_DIR/test_python_script_modifications.py" "python"
+run_test "Integration Tests" "$TESTS_DIR/integration-tests.js" "gjs"
 
 # Print final summary
 echo ""
 echo "========================================="
 echo "TEST SUMMARY"
 echo "========================================="
-echo "Total test groups run: $TOTAL_TESTS"
+echo "Total test suites run: $TOTAL_TESTS"
 echo "Passed: $((TOTAL_TESTS - FAILED_TESTS))"
 echo "Failed: $FAILED_TESTS"
 echo ""

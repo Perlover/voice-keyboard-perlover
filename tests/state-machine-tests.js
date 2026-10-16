@@ -2,7 +2,6 @@
 
 /**
  * State Machine Foundation Tests
- * Task Group 1.1: Write 2-8 focused tests for state machine
  */
 
 const GLib = imports.gi.GLib;

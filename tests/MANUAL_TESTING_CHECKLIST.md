@@ -1,7 +1,5 @@
 # Manual Testing Checklist for Click-to-Toggle Feature
 
-## Task Group 6.7: Manual Testing Checklist
-
 This checklist covers all critical user workflows for the click-to-toggle voice recording feature.
 
 ---

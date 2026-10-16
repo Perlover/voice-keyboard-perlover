@@ -2,7 +2,6 @@
 
 /**
  * IDLE & RECORDING States Tests
- * Task Group 3.1: Write 2-8 focused tests for IDLE/RECORDING states
  */
 
 const GLib = imports.gi.GLib;
@@ -154,10 +153,10 @@ function createMockApplet() {
                     this.startRecordingAnimation();
                     break;
                 case this.STATE_PROCESSING:
-                    // Will be implemented in Task Group 4
+                    // Not covered by this mock
                     break;
                 case this.STATE_ERROR:
-                    // Will be implemented in Task Group 4
+                    // Not covered by this mock
                     break;
             }
         }
