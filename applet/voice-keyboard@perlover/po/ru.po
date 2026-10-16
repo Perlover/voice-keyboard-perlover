@@ -491,3 +491,7 @@ msgstr "Ни одна из этих моделей не похожа на мод
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr "Показаны первые %d моделей; любое другое имя можно вписать в настройках."
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr "Речь не распознана"

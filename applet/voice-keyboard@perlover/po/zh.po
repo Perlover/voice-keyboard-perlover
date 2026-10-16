@@ -491,3 +491,7 @@ msgstr "这些模型看起来都不是语音识别模型。该 API 密钥可能�
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr "仅显示前 %d 个模型；其他名称可在设置中手动输入。"
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr "未识别到语音"

@@ -491,3 +491,7 @@ msgstr "Aucun de ces modèles ne ressemble à un modèle de reconnaissance vocal
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr "Les %d premiers modèles sont affichés ; saisissez tout autre nom dans les paramètres."
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr "Aucune parole reconnue"

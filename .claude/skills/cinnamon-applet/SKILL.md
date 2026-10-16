@@ -62,6 +62,7 @@ the code is actually written and which bug taught each rule; the hashes point to
 | 5 TIMEOUT | text pasted; notify "Maximum recording time reached", IDLE |
 | 6 CHAT_ERROR | with `TEXT_FILE=` and a custom prompt → chat-only retry dialog; else notify, ERROR |
 | 7 PASTE_ERROR | text is in the clipboard; notify "paste it manually", IDLE |
+| 8 NO_SPEECH | silence or a dropped Whisper caption; clear retry, notify "No speech recognized", IDLE |
 | other | `errorMessage = "Process exited with code %d"`, ERROR |
 
 In ERROR the next left click opens `showRetryDialog` (when `_retryContext` is set) or `showErrorDialog`.

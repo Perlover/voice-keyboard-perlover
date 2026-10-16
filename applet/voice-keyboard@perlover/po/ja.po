@@ -491,3 +491,7 @@ msgstr "音声認識モデルらしいモデルがありません。この API �
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr "最初の %d 個のモデルを表示しています。その他の名前は設定で入力してください。"
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr "音声を認識できませんでした"

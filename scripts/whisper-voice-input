@@ -38,6 +38,7 @@ EXIT_CANCELLED = 4
 EXIT_TIMEOUT = 5
 EXIT_CHAT_ERROR = 6
 EXIT_PASTE_ERROR = 7
+EXIT_NO_SPEECH = 8
 
 # Retry policy for transient network errors (Timeout, ConnectionError)
 NETWORK_RETRY_ATTEMPTS = 3  # total attempts including the first one
@@ -48,6 +49,26 @@ OPENAI_BASE_URL = "https://api.openai.com/v1"
 # The applet reads --list-models output only after the process exits, so it
 # must fit into the 64 KB pipe buffer: 500 IDs of up to ~100 chars do
 MAX_LISTED_MODELS = 500
+
+# Whisper fills silence and noise with captions from its training data: on a
+# silent or noisy recording hub/stt answered "Продолжение следует..." 4 times
+# out of 4 (2026-10-16). Phrases after the Tolmach server, plus fr/zh/ja/uk
+HALLUCINATIONS = re.compile(
+    r"субтитр|продолжение следует|спасибо за просмотр|подписывайтесь|дякую за перегляд|amara\.org|"
+    r"subtítulos|suscríbete|gracias por ver|thanks for watching|subscribe|"
+    r"sous-titr|merci d'avoir regardé|"
+    r"untertitel\w* (?:im auftrag|des zdf)|vielen dank fürs zuschauen|\*\s*musik\s*\*|"
+    r"titulky vytvořil jirka kováč|johnyx|"
+    r"字幕由|谢谢观看|请不吝点赞|ご視聴ありがとうございました|チャンネル登録",
+    re.IGNORECASE,
+)
+# A caption in place of silence is 2-5 words ("Субтитры сделал DimaTorzok").
+# A longer text is real speech that may say "subtitles" itself, so only a short
+# caption sentence at its end is cut. The character cap keeps a long Chinese or
+# Japanese dictation (one "word" without spaces) from being dropped whole
+HALLUCINATION_MAX_WORDS = 8
+HALLUCINATION_MAX_CHARS = 80
+HALLUCINATION_TAIL_WORDS = 5
 
 
 def record_audio_user_controlled(max_duration=300, output_file="/tmp/voice-input.ogg"):
@@ -249,7 +270,11 @@ def transcribe_openai_compatible(audio_file, base_url, api_key, language="auto",
                     return response.text.strip()
                 print(f"ERROR: {label}: non-JSON response: {response.text[:300]}", file=sys.stderr)
                 return None
-            return result.get('text', '').strip()
+            # No "text" at all is a broken answer; an empty one means no speech
+            if not isinstance(result, dict) or not isinstance(result.get('text'), str):
+                print(f"ERROR: {label}: no text in response: {response.text[:300]}", file=sys.stderr)
+                return None
+            return result['text'].strip()
         elif response.status_code == 429:
             print(f"ERROR: {label}: rate limit exceeded. Please wait and try again.", file=sys.stderr)
             return None
@@ -397,6 +422,27 @@ def transcribe_local(audio_file, server_url, language="auto"):
     except Exception as e:
         print(f"ERROR: Local transcription failed: {e}", file=sys.stderr)
         return None
+
+
+def drop_hallucinations(text):
+    """
+    Remove what Whisper writes for silence or noise instead of speech.
+    Returns '' for a text with no letters or digits ("...", "♪") and for a
+    short caption ("Продолжение следует...", "Thanks for watching!"); a longer
+    text comes back without a short caption sentence at its end, if it has one
+    """
+    text = text.strip()
+    if not re.search(r"[^\W_]", text):
+        return ""
+    if not HALLUCINATIONS.search(text):
+        return text
+    if len(text.split()) <= HALLUCINATION_MAX_WORDS and len(text) <= HALLUCINATION_MAX_CHARS:
+        return ""
+    tail = re.search(r"[.!?…]\s+([^.!?…]+[.!?…]*)$", text)
+    if (tail and HALLUCINATIONS.search(tail.group(1))
+            and len(tail.group(1).split()) <= HALLUCINATION_TAIL_WORDS):
+        return text[:tail.start() + 1]
+    return text
 
 
 def _is_reasoning_model(model):
@@ -719,14 +765,24 @@ def main():
                 server_url = os.environ.get('WHISPER_LOCAL_URL', 'http://localhost:9000/asr')
                 text = transcribe_local(temp_audio, server_url, language)
 
-            if not text:
+            if text is None:
                 # Transcription failed — preserve audio so applet can offer retry
                 preserve_audio = True
                 _print_sentinel('AUDIO_FILE', temp_audio)
-                print("No text recognized", file=sys.stderr)
+                print("ERROR: Transcription failed", file=sys.stderr)
                 sys.exit(EXIT_TRANSCRIPTION_ERROR)
 
             print(f"Recognized: {text}", file=sys.stderr)
+            heard = text
+            text = drop_hallucinations(text)
+            if text != heard:
+                print(f"Dropped as Whisper hallucination: {len(heard) - len(text)} of {len(heard)} chars",
+                      file=sys.stderr)
+            if not text:
+                # Silence or noise. Not a failure: a retry of the same audio
+                # gets the same answer, so the recording is not kept
+                print("No speech recognized", file=sys.stderr)
+                sys.exit(EXIT_NO_SPEECH)
 
         # Step 2.5: If custom prompt mode, process through Chat API
         custom_prompt = os.environ.get('CUSTOM_PROMPT', '')

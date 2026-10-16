@@ -492,3 +492,7 @@ msgstr ""
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr ""
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr ""

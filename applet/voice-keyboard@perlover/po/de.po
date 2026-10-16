@@ -491,3 +491,7 @@ msgstr "Keines dieser Modelle sieht wie ein Spracherkennungsmodell aus. Möglich
 #. applet.js - compatible server connection dialog
 msgid "Showing the first %d models; type any other name in the settings."
 msgstr "Es werden die ersten %d Modelle angezeigt; jeden anderen Namen können Sie in den Einstellungen eingeben."
+
+#. applet.js - notification
+msgid "No speech recognized"
+msgstr "Keine Sprache erkannt"

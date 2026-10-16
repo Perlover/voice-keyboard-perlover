@@ -103,6 +103,7 @@ The script communicates results via exit codes:
 - `5` - Timeout reached (max duration)
 - `6` - Chat API error (custom prompt processing failed)
 - `7` - Paste error (text is in the clipboard, auto-paste failed)
+- `8` - No speech (empty answer, or only a Whisper caption such as "Продолжение следует..." that `drop_hallucinations` removed; nothing pasted, no retry)
 
 ### Settings Schema
 

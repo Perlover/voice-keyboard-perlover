@@ -12,7 +12,7 @@ setting end to end, load the **settings-and-i18n** skill; for the applet side, *
 
 ## Verify every change
 
-Beyond CLAUDE.md's `py_compile` and test run (20 tests, about 1 s, no network, X11 or mic):
+Beyond CLAUDE.md's `py_compile` and test run (22 tests, about 1 s, no network, X11 or mic):
 ```bash
 python3 -m unittest tests.test_python_script_modifications.TestPythonScriptModifications.test_normalize_base_url
 COMPAT_BASE_URL=http://host:8000 scripts/whisper-voice-input --list-models   # one JSON line, exit 0/1
@@ -56,6 +56,15 @@ is a free-form log that the applet keeps only via `_debug` (`~/.voice-keyboard-d
 only a fixed message for each exit code. **Both pipes are read only after the process exits**, so
 more than 64 KB in either one blocks the script on write (same class of bug as 01e030c). Truncate
 any server body you print (`[:300]`).
+
+**Silence and captions.** Backends return `None` on failure (exit 3, audio kept for a retry) and
+`''` for an empty answer. `drop_hallucinations` runs on every backend's text before the chat step:
+Whisper answers silence or noise with a training-data caption (hub/stt: "Продолжение следует..."
+4 of 4 times, 2026-10-16), and a short caption or a text without letters becomes `''`, a longer
+text loses only a short caption sentence at its end. `''` exits 8 (`EXIT_NO_SPEECH`): no paste, no
+chat request, no retry file. The phrase list follows the Tolmach server (`~/src/tolmach/server/
+translator.py`, `HALLUCINATIONS`). Its whole-phrase phantoms ("Спасибо", "Thank you") are left
+out on purpose: without a VAD a real "Спасибо!" would be lost.
 
 **Exit codes.** How the applet reacts to each code, and the checklist for adding one, are in the
 **cinnamon-applet** skill ("Exit codes → UI"). 3 and 6 lead to a retry dialog only if
@@ -169,7 +178,7 @@ Add a stdlib-only method to `TestPythonScriptModifications`. Start each behaviou
   vars (`"RETRY_CHAT_FROM": ""`).
 - **Backoff.** If every attempt fails with a connection error, the test sleeps 4 s unless you patch
   `NETWORK_RETRY_BACKOFF` to `[0, 0]`. End each test with `print("PASS: ...")`.
-- **Source-grep tests.** 12 of the 20 tests do `assertIn("<exact text>", script_content)`.
+- **Source-grep tests.** 12 of the 22 tests do `assertIn("<exact text>", script_content)`.
   Reformatting quoted text breaks them: the xdotool argv, `paste_text(text, initial_window_id)`,
   `EXIT_CHAT_ERROR = 6`, and `/v1/chat/completions` (now only in the `chat_completion` docstring).
   Update them in the same change, and prefer behaviour tests for new code.

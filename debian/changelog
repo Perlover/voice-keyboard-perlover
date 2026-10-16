@@ -1,3 +1,20 @@
+voice-keyboard-perlover (1.10.1-1) noble; urgency=medium
+
+  * Whisper captions in place of silence are dropped: on a silent or noisy
+    recording Whisper answers with a phrase from its training data
+    ("Продолжение следует...", "Субтитры сделал...", "Thanks for
+    watching!"), which was pasted as text. A short caption or a text
+    without letters is now discarded; a longer dictation loses only a
+    short caption sentence at its end
+  * New exit code 8 (no speech): an empty answer or a dropped caption
+    pastes nothing, sends nothing to a custom prompt and shows the
+    notification "No speech recognized" instead of the retry dialog
+  * An answer without a "text" field is still a transcription error with
+    a retry
+  * i18n: new string translated to 6 languages (ru, es, de, fr, zh, ja)
+
+ -- perlover <perlover@perlover.com>  Fri, 16 Oct 2026 23:38:48 +0200
+
 voice-keyboard-perlover (1.10.0-1) noble; urgency=medium
 
   * New transcription mode "OpenAI-compatible Server": any server with the

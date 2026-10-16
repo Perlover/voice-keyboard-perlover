@@ -123,6 +123,7 @@ class TestPythonScriptModifications(unittest.TestCase):
         self.assertIn("EXIT_TRANSCRIPTION_ERROR = 3", script_content)
         self.assertIn("EXIT_CANCELLED = 4", script_content)
         self.assertIn("EXIT_TIMEOUT = 5", script_content)
+        self.assertIn("EXIT_NO_SPEECH = 8", script_content)
 
         # Verify exit codes are used
         self.assertIn("sys.exit(EXIT_SUCCESS)", script_content)
@@ -130,6 +131,11 @@ class TestPythonScriptModifications(unittest.TestCase):
         self.assertIn("sys.exit(EXIT_RECORDING_ERROR)", script_content)
         self.assertIn("sys.exit(EXIT_TRANSCRIPTION_ERROR)", script_content)
         self.assertIn("sys.exit(EXIT_TIMEOUT)", script_content)
+        self.assertIn("sys.exit(EXIT_NO_SPEECH)", script_content)
+
+        # The applet must use the same number
+        applet = SCRIPT_PATH.parent.parent / "applet" / "voice-keyboard@perlover" / "applet.js"
+        self.assertIn("const EXIT_NO_SPEECH = 8;", applet.read_text(encoding="utf-8"))
 
         print("PASS: All exit codes are properly defined and used")
 
@@ -377,11 +383,12 @@ class TestPythonScriptModifications(unittest.TestCase):
 
         print("PASS: chat_completion works against an OpenAI-compatible server")
 
-    def _start_compat_server(self, chat_answer="Ahoj."):
+    def _start_compat_server(self, chat_answer="Ahoj.", transcription={"text": " Ahoj světe. "}):
         """
         Mock OpenAI-compatible server shaped after a recorded LiteLLM gateway
         (2026-10-16): /v1/models filtered by key, 403 for a model the key may
-        not use. Returns (server, requests_seen); call server.shutdown().
+        not use. `transcription` is the JSON answer to /v1/audio/transcriptions.
+        Returns (server, requests_seen); call server.shutdown().
         """
         requests_seen = []
 
@@ -410,7 +417,7 @@ class TestPythonScriptModifications(unittest.TestCase):
                 seen = {"path": self.path, "auth": self.headers.get("Authorization"), "raw": raw}
                 requests_seen.append(seen)
                 if self.path == "/v1/audio/transcriptions":
-                    return self._reply(200, {"text": " Ahoj světe. "})
+                    return self._reply(200, transcription)
                 body = json.loads(raw)
                 seen["body"] = body
                 if body["model"] != "hub/instruct":
@@ -524,6 +531,76 @@ class TestPythonScriptModifications(unittest.TestCase):
             server.server_close()
 
         print("PASS: denied chat model keeps recognized text for retry")
+
+    def test_drop_hallucinations(self):
+        """
+        Test that Whisper captions in place of silence are dropped, while real
+        speech, including speech that mentions subtitles, stays
+        """
+        module = self._load_script_module()
+        drop = module.drop_hallucinations
+        # What hub/stt answers for a silent recording (2026-10-16) and similar
+        for caption in ("Продолжение следует...", "  Субтитры сделал DimaTorzok ",
+                        "Thanks for watching!", "Untertitel im Auftrag des ZDF, 2021",
+                        "ご視聴ありがとうございました", "...", "♪", ""):
+            self.assertEqual(drop(caption), "", caption)
+        for speech in ("Раз, два, три, четыре, пять.", "Спасибо!", "1 2 3 4 5 проверка связи",
+                       "Я посмотрел фильм с субтитрами, и мне понравилось, как они сделаны."):
+            self.assertEqual(drop(speech), speech.strip(), speech)
+        # A caption after real speech is cut, the speech stays
+        self.assertEqual(drop("Я приеду завтра в девять утра, встречай меня у входа. Продолжение следует..."),
+                         "Я приеду завтра в девять утра, встречай меня у входа.")
+        print("PASS: drop_hallucinations drops captions and keeps speech")
+
+    def test_main_no_speech(self):
+        """
+        Test that a caption or an empty answer ends with EXIT_NO_SPEECH: nothing
+        pasted, no chat request, no AUDIO_FILE for a retry and the recording
+        removed; an answer without "text" is still a transcription error
+        """
+        module = self._load_script_module()
+        cases = (({"text": "Продолжение следует..."}, module.EXIT_NO_SPEECH),
+                 ({"text": " "}, module.EXIT_NO_SPEECH),
+                 ({"error": "no text field"}, module.EXIT_TRANSCRIPTION_ERROR))
+        for answer, expected in cases:
+            server, requests_seen = self._start_compat_server(transcription=answer)
+            audio = tempfile.NamedTemporaryFile(suffix=".ogg", delete=False)
+            audio.write(b"\x00" * 64)
+            audio.close()
+            stdout = io.StringIO()
+            pasted = []
+            try:
+                module.get_active_window = lambda: None
+                module.paste_text = lambda text, window_id=None: pasted.append(text) or True
+                env = {
+                    "WHISPER_MODE": "openai-compatible",
+                    "COMPAT_BASE_URL": f"http://127.0.0.1:{server.server_port}/v1",
+                    "COMPAT_API_KEY": "compat-key",
+                    "COMPAT_MODEL": "hub/stt",
+                    "CUSTOM_PROMPT": "Translate to Czech",
+                    "CHAT_MODEL": "hub/instruct",
+                    "RETRY_TRANSCRIBE_FROM": audio.name,
+                    "RETRY_CHAT_FROM": "",
+                }
+                with unittest.mock.patch.dict(os.environ, env), \
+                        contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(io.StringIO()):
+                    with self.assertRaises(SystemExit) as ctx:
+                        module.main()
+                self.assertEqual(ctx.exception.code, expected, answer)
+                self.assertEqual(pasted, [])
+                self.assertEqual([r["path"] for r in requests_seen], ["/v1/audio/transcriptions"])
+                if expected == module.EXIT_NO_SPEECH:
+                    self.assertNotIn("AUDIO_FILE=", stdout.getvalue())
+                    self.assertFalse(os.path.exists(audio.name))
+                else:
+                    self.assertIn(f"AUDIO_FILE={audio.name}", stdout.getvalue())
+            finally:
+                server.shutdown()
+                server.server_close()
+                if os.path.exists(audio.name):
+                    os.remove(audio.name)
+
+        print("PASS: silence ends with EXIT_NO_SPEECH, a broken answer stays retryable")
 
     def test_list_models_command_output(self):
         """

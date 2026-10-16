@@ -34,6 +34,7 @@ const EXIT_CANCELLED = 4;
 const EXIT_TIMEOUT = 5;
 const EXIT_CHAT_ERROR = 6;
 const EXIT_PASTE_ERROR = 7;
+const EXIT_NO_SPEECH = 8;
 
 // Watchdog timeout for STATE_PROCESSING.
 // Python retries transient network errors up to 3× (10s connect + 30s read)
@@ -895,6 +896,17 @@ VoiceKeyboardApplet.prototype = {
                         Main.notify(
                             "Voice Keyboard Perlover",
                             _("Text is in the clipboard — paste it manually (Ctrl+V or Shift+Insert)")
+                        );
+                        this.setState(STATE_IDLE);
+
+                    } else if (exitCode === EXIT_NO_SPEECH) {
+                        // Silence or noise: the server returned nothing, or a
+                        // Whisper caption ("Thanks for watching!") the script
+                        // dropped. Retrying the same audio would give the same answer.
+                        this._clearRetryContext();
+                        Main.notify(
+                            "Voice Keyboard Perlover",
+                            _("No speech recognized")
                         );
                         this.setState(STATE_IDLE);
 
