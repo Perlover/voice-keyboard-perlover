@@ -36,7 +36,7 @@ sudo make uninstall
 # Run Python tests only (works without Cinnamon)
 python3 tests/test_python_script_modifications.py
 
-# Run individual GJS tests (requires Cinnamon desktop)
+# Run individual GJS tests (plain gjs, no Cinnamon session needed)
 gjs tests/state-machine-tests.js
 gjs tests/click-handler-tests.js
 gjs tests/idle-recording-tests.js
@@ -99,9 +99,10 @@ The script communicates results via exit codes:
 - `1` - Configuration error
 - `2` - Recording error (ffmpeg)
 - `3` - Transcription error (API)
-- `4` - Cancelled by user
+- `4` - Cancelled by user (handled by the applet; the script does not emit it)
 - `5` - Timeout reached (max duration)
 - `6` - Chat API error (custom prompt processing failed)
+- `7` - Paste error (text is in the clipboard, auto-paste failed)
 
 ### Settings Schema
 
@@ -142,9 +143,9 @@ GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, Lang.bind(this, function(pid, s
 
 - Python 3 only with minimal dependencies (stdlib + requests)
 - Uses ffmpeg with `-f pulse` for audio (works with PulseAudio and PipeWire)
-- Audio format: M4A/AAC at 16kHz mono for fast API uploads
+- Audio format: OGG/Opus (libopus, 32 kbit/s) at 16kHz mono for fast API uploads
 - Text pasting: xclip to both CLIPBOARD and PRIMARY selections, then xdotool Shift+Insert
-- Environment variables for config: `WHISPER_MODE` (`openai` / `openai-compatible` / `local`), `OPENAI_API_KEY`, `OPENAI_MODEL`, `COMPAT_BASE_URL`, `COMPAT_API_KEY`, `COMPAT_MODEL`, `COMPAT_ENABLE_THINKING` (unless `1`, prompt requests carry `chat_template_kwargs: {enable_thinking: false}`), `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `CUSTOM_PROMPT`, `CHAT_MODEL` (in `openai-compatible` mode the chat request goes to `COMPAT_BASE_URL` with `COMPAT_API_KEY`)
+- Environment variables for config: `WHISPER_MODE` (`openai` / `openai-compatible` / `local`), `OPENAI_API_KEY`, `OPENAI_MODEL`, `COMPAT_BASE_URL`, `COMPAT_API_KEY`, `COMPAT_MODEL`, `COMPAT_ENABLE_THINKING` (unless `1`, prompt requests carry `chat_template_kwargs: {enable_thinking: false}`), `WHISPER_LOCAL_URL`, `WHISPER_LANGUAGE`, `RECORDING_DURATION`, `CUSTOM_PROMPT`, `CHAT_MODEL` (in `openai-compatible` mode the chat request goes to `COMPAT_BASE_URL` with `COMPAT_API_KEY`), `RETRY_TRANSCRIBE_FROM` / `RETRY_CHAT_FROM` (retry runs: a preserved audio or text file instead of a new recording)
 - `whisper-voice-input --list-models` prints the OpenAI-compatible server's models as JSON (`{"models": [...]}` or `{"error": "..."}`); used by the "Check Connection" settings button
 
 ## Version Updates
